@@ -11,6 +11,7 @@ def chat(agent, human_input):
     if tool is None:
         return res["output"], None, []
 
+    print(res["chat_history"])
     enhanced_context = res["intermediate_steps"][0][1]
     enhance_agent_context(agent, enhanced_context)
     return enhanced_context, None, create_products(enhanced_context)
