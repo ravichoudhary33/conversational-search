@@ -1,7 +1,11 @@
 .env
+<<<<<<< HEAD
 .DS_Store
 
 **/__pycache__/
 .idea/
 notebooks/product_data.csv
 **/.ipynb_checkpoints/
+=======
+*.conf
+>>>>>>> 2bba826 (fix: backend complete implementation)

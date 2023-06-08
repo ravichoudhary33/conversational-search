@@ -1,22 +1,27 @@
-version: "3.9"
+version: '3'
 
 services:
   alchemist:
-    build:
+    build: 
       dockerfile: ./alchemist/Dockerfile
       context: ./
     ports:
-      - '8080:8080'
+      - 8080:8080
     volumes:
       - './alchemist:/code/'
     depends_on:
+<<<<<<< HEAD
       - "redis"
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+=======
+      - redis
+>>>>>>> 2bba826 (fix: backend complete implementation)
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis
     ports:
       - "6379:6379"
+<<<<<<< HEAD
     volumes:
         - redis_data:/data
     healthcheck:
@@ -44,6 +49,8 @@ services:
       JUPYTER_ENABLE_LAB: "yes"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       
+=======
+>>>>>>> 2bba826 (fix: backend complete implementation)
 
 volumes:
   redis_data:
