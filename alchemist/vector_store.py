@@ -47,17 +47,17 @@ class RedisProductRetriever(BaseRetriever, BaseModel):
 
     def combine_metadata(self, doc) -> str:
         metadata = doc.metadata
-        return (
-                "Product ID: " + metadata["uniqueId"] + ". " +
-                "Item Title: " + metadata["title"] + ". " +
-                "Item Color: " + str(metadata["color"]) + ". " +
-                "Item Price: " + metadata["selling_price"] + ". " +
-                "Item Brands: " + str(metadata.get("brands", "")) + ". " +
-                "Item Image URL: " + metadata["productImage"] + ". " +
-                "Item URL: " + metadata["productURL"] + ". " +
-                "Item Description: " + metadata["description"] + ". "
-
-        )
+        metadata_dict = {
+            "Product ID:": metadata.get("uniqueId", ""),
+            "Product Title:": metadata.get("title", ""),
+            "Product Color:": metadata.get("color", ""),
+            "Product Price:": metadata.get("selling_price", ""),
+            "Product Brands:": metadata.get("brands", ""),
+            "Product Image URL:": metadata.get("productImage", ""),
+            "Product URL:": metadata.get("productURL", ""),
+            "Product Description:": metadata.get("description", "")
+        }
+        return json.dumps(metadata_dict)
 
     def get_relevant_documents(self, query):
         docs = []

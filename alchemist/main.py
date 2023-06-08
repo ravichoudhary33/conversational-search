@@ -4,6 +4,7 @@ from PIL import Image
 from io import BytesIO
 from fastapi.middleware.cors import CORSMiddleware
 from agents import create_agent, tools, llm
+from chat import chat
 
 app = FastAPI()
 
@@ -23,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-agent_user_map = {}
+convo_history = {}
 
 
 @app.get("/")
@@ -57,9 +58,11 @@ def get_text_chat_response(sitekey,request: TextRequest,query_request : Request)
     if userid in convo_history:
         langchain_info = convo_history[userid]
     else:
-        langchain_info = newLangChainModel()
+        langchain_info = create_agent(llm, tools)
         convo_id = "1234567891234567"
         convo_history[userid] = langchain_info
+
+    ai_response, filters, products = chat(langchain_info, request.text)
 
     text = "Sure, here are a few shirts for "+userid+" "+ request.convo_id + " "+ sitekey
     filter_options = ["hrx", "Raymond", "Below 5K"]
