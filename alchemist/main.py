@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from PIL import Image
 from io import BytesIO
 from fastapi.middleware.cors import CORSMiddleware
+from agents import create_agent, tools, llm
 
 app = FastAPI()
 
@@ -21,6 +22,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+agent_user_map = {}
 
 
 @app.get("/")
@@ -49,6 +52,15 @@ def get_text_chat_response(sitekey,request: TextRequest,query_request : Request)
     # Process the request and generate the response
     query_params = query_request.query_params
     userid = query_params.get('uid')
+
+
+    if userid in convo_history:
+        langchain_info = convo_history[userid]
+    else:
+        langchain_info = newLangChainModel()
+        convo_id = "1234567891234567"
+        convo_history[userid] = langchain_info
+
     text = "Sure, here are a few shirts for "+userid+" "+ request.convo_id + " "+ sitekey
     filter_options = ["hrx", "Raymond", "Below 5K"]
     if(request.text.lower() =="hello"):
