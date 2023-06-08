@@ -9,6 +9,10 @@ class RetrievalTool(BaseTool):
     Return as much information as possible to the user including price, color, brand information"""
     redis_product_retriever = RedisProductRetriever()
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.redis_product_retriever.create_vector_store()
+
     def _run(self, query: str):
         results = self.redis_product_retriever.get_relevant_documents(query)
         context = "\n".join([document.page_content for document in results])

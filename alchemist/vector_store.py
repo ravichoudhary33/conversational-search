@@ -9,17 +9,16 @@ from langchain.vectorstores.redis import Redis as RedisVectorStore
 
 
 class RedisProductRetriever(BaseRetriever, BaseModel):
-    def __init__(self):
-        vectorstore: VectorStore = None
+    vectorstore: VectorStore = None
 
-    def create_vector_store(self):
+    def create_vector_store(cls):
         file = "express_com-u1456154309768-[1686213365723015437]--[3bd1ed46-1d87-4fa8-9775-bf30e4b177fc]-express_com-u1456154309768_2023_06_08_08_35_38_data_products.json"
         with open(file) as f:
             feed_data = json.load(f)
 
         feed_data = feed_data["feed"]["catalog"]["add"]["items"]
 
-        texts = [item["description"] for item in feed_data]
+        texts = [item.get("description", item.get("productDescription", "No description found")) for item in feed_data]
 
         # product metadata that we'll store along our vectors
         # metadatas = list(product_metadata.values())
@@ -34,7 +33,7 @@ class RedisProductRetriever(BaseRetriever, BaseModel):
         # assumes you have a redis stack server running on within your docker compose network
         redis_url = "redis://redis:6379"
 
-        self.vectorstore = RedisVectorStore.from_texts(
+        cls.vectorstore = RedisVectorStore.from_texts(
             texts=texts,
             metadatas=metadatas,
             embedding=embedding,
