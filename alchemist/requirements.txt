@@ -7,3 +7,4 @@ gdown
 fastapi==0.78.0
 uvicorn[standard]
 gunicorn==20.1.0
+Pillow==9.5.0
