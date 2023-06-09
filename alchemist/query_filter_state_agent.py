@@ -2,6 +2,9 @@ import openai
 import re
 import json
 from brewer_fake import fake_filters, fake_prods
+from main import Product
+from pydantic import parse_obj_as
+from typing import List
 
 
 class QueryFilterStateAgent():
@@ -22,11 +25,14 @@ class QueryFilterStateAgent():
             """}]  # accumulate messages
 
     autosuggest_context = [{'role': 'system', 'content': f"""
-            You are an query auto suggestion platform for apparel vertical ecommerse site. \
-            Use the provided context to suggest short and accurate query suggestion.\ 
-            Format your answer as a list of lower-case words separated by commas.\
-            Include no more than five items in the list. Do not apologize in case of incorrect products. \
-            You can just provide suggestions if the user does not like the products
+            You are a query auto suggestion platform for apparel vertical ecommerse site. \
+            Use the provided context to suggest short and accurate query suggestion only.\
+            Format the output as a JSON object with only keys as auto_suggestions without any additional text.\
+            Here's an example of the expected output format:\
+            {{
+                "auto_suggestions": [suggestion 1, suggestion 2]
+            }}
+            Wrap the output with triple backticks. Make sure auto_suggestions list does not have more than 5 elements.\
             """}]  # accumulate messages
 
     def __init__(self):
@@ -73,12 +79,20 @@ class QueryFilterStateAgent():
         # print(res)
         return eval(res)
 
+    def parse_content_inside_backticks(string):
+        pattern = r"```([\s\S]*?)```"
+        matches = re.findall(pattern, string, re.DOTALL)
+        # data = json.loads(matches[0].replace('\n', ''))
+        return matches
+
     def parse_autosuggest_response(self, autosuggest_response):
-        pass
+        autosuggestions = self.parse_content_inside_backticks(autosuggest_response)
+        return json.loads(autosuggestions[0])["auto_suggestions"]
 
     def parse_prods(self, products):
-        pass
-
+        products = json.loads(products)['products']
+        products = [{"title": product["titile"], "image_url": product["imageUrl"], "last_price": product["list_price"], "sale_price": product["salePrice"]} for product in products]
+        return products
 
     def collect_message(self, user_id, human_input):
         if user_id in self.convo_history:
