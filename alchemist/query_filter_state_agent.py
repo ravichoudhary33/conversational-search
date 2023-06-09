@@ -2,7 +2,7 @@ import openai
 import re
 import json
 from brewer_fake import fake_filters, fake_prods
-from main import Product
+# from main import Product
 from pydantic import parse_obj_as
 from typing import List
 
@@ -79,7 +79,7 @@ class QueryFilterStateAgent():
         # print(res)
         return eval(res)
 
-    def parse_content_inside_backticks(string):
+    def parse_content_inside_backticks(self, string):
         pattern = r"```([\s\S]*?)```"
         matches = re.findall(pattern, string, re.DOTALL)
         # data = json.loads(matches[0].replace('\n', ''))
@@ -90,7 +90,7 @@ class QueryFilterStateAgent():
         return json.loads(autosuggestions[0])["auto_suggestions"]
 
     def parse_prods(self, products):
-        products = json.loads(products)['products']
+        products = eval(products)['products']
         products = [{"title": product["titile"], "image_url": product["imageUrl"], "last_price": product["list_price"], "sale_price": product["salePrice"]} for product in products]
         return products
 
@@ -99,6 +99,7 @@ class QueryFilterStateAgent():
             user_context = self.convo_history[user_id]["context"]
             user_autosuggest_context = self.convo_history[user_id]["autosuggest_context"]
         else:
+            self.convo_history[user_id] = {}
             user_context = self.context
             self.convo_history[user_id]["context"] = user_context
             user_autosuggest_context = self.autosuggest_context
@@ -140,7 +141,7 @@ class QueryFilterStateAgent():
             'assistant_autosuggest_response': as_response,
             'suggested_queries': parsed_as_response,
             'suggested_filters': fake_filters("", ""),
-            'products': self.parse_prods(fake_prods(""))
+            'products': []#self.parse_prods(fake_prods(""))
         }
 
         return all_resp['product_summary'], all_resp['assistant'], all_resp['assistant_autosuggest_response'], all_resp['suggested_queries'], all_resp['suggested_filters'], all_resp['products']

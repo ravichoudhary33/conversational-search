@@ -12,7 +12,7 @@ class RedisProductRetriever(BaseRetriever, BaseModel):
     vectorstore: VectorStore = None
 
     def create_vector_store(cls):
-        file = "./notebooks/express_com-u1456154309768-[1686213365723015437]--[3bd1ed46-1d87-4fa8-9775-bf30e4b177fc]-express_com-u1456154309768_2023_06_08_08_35_38_data_products.json"
+        file = "express_com-u1456154309768-[1686213365723015437]--[3bd1ed46-1d87-4fa8-9775-bf30e4b177fc]-express_com-u1456154309768_2023_06_08_08_35_38_data_products.json"
         with open(file) as f:
             feed_data = json.load(f)
 

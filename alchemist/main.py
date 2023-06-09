@@ -5,6 +5,7 @@ from io import BytesIO
 from fastapi.middleware.cors import CORSMiddleware
 from agents import create_agent, tools, llm
 from chat import chat
+from query_filter_state_agent import QueryFilterStateAgent
 
 app = FastAPI()
 
@@ -25,7 +26,7 @@ app.add_middleware(
 )
 
 convo_history = {}
-
+queryFilterStateAgent = QueryFilterStateAgent()
 
 @app.get("/")
 def read_root():
@@ -55,17 +56,20 @@ def get_text_chat_response(sitekey,request: TextRequest,query_request : Request)
     userid = query_params.get('uid')
 
 
-    if userid in convo_history:
-        langchain_info = convo_history[userid]
-    else:
-        langchain_info = create_agent(llm, tools)
-        convo_id = "1234567891234567"
-        convo_history[userid] = langchain_info
+    # if userid in convo_history:
+    #     langchain_info = convo_history[userid]
+    # else:
+    #     langchain_info = create_agent(llm, tools)
+    #     convo_id = "1234567891234567"
+    #     convo_history[userid] = langchain_info
 
-    text, filter_options, products = chat(langchain_info, request.text)
-    print(text, filter_options, products)
+    # text, filter_options, products = chat(langchain_info, request.text)
+    # print(text, filter_options, products)
 
-    # text = "Sure, here are a few shirts for "+userid+" "+ request.convo_id + " "+ sitekey
+    product_summary_resp, assistant_resp, as_resp, suggested_queries, suggested_filters, products = queryFilterStateAgent.collect_message(userid, request.text)
+    print(product_summary_resp, assistant_resp, as_resp, suggested_queries, suggested_filters, products)
+
+    text = "Sure, here are a few shirts for "+userid+" "+ request.convo_id + " "+ sitekey
     filter_options = ["hrx", "Raymond", "Below 5K"]
     # if(request.text.lower() =="hello"):
     #     text = "Hello how are you"
