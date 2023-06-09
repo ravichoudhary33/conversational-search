@@ -3,7 +3,7 @@ import logo from './unbxd-logo.png';
 import send from './send.png';
 import voice from './voice.png';
 import upload from './upload-image.png';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Scrollbar, A11y, EffectCube } from 'swiper';
 import 'swiper/swiper-bundle.min.css';
@@ -13,11 +13,20 @@ function Chat() {
 
     const [question, setQuestion] = useState('');
 
-    const [history, setHistory] = useState([{key: 1, ai: true, text: 'How may I help you ?', initial: true, filters: [], products: [], auto: [] }]);
+    const [history, setHistory] = useState([{key: 1, ai: true, text: 'How may I help you ?', initial: true, filters: [], products: [] }]);
 
     const [typing, setTyping] = useState(false);
 
     const showTime = new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+
+    const [auto, setAuto] = useState([]);
+
+    const bottomRef = useRef(null);
+
+    useEffect(() => {
+      // 👇️ scroll to bottom every time messages change
+      bottomRef.current?.scrollIntoView({behavior: 'smooth'});
+    }, [history]);
 
     const handleKeyDown = (event) => {
         if (event.key === 'Enter') {
@@ -36,7 +45,8 @@ function Chat() {
         
         axios.post("http://192.168.2.150:8080/sites/express-1233/chatbot?uid=12", data )
             .then((response) => {
-                setHistory((current) => ([...current, {key:3, ai:true, text:response.data.response.text, filters: response.data.response.filter, products: response.data.response.products, auto: response.data.response.autosuggest}]));
+                setHistory((current) => ([...current, {key:3, ai:true, text:response.data.assistant_resp, filters: response.data.suggested_filters, products: response.data.response.products }]));
+                setAuto(response.data.suggested_queries);
                 setTyping(false);
              })
             .catch((err) => {
@@ -52,10 +62,13 @@ function Chat() {
         if (val.ai === true) {
             return (
              <div className='outer-sectionAI'>
+                <div className="sectionBallonAi">
+                    <div className="ballon ai">{val.text}</div>
+                </div>
                 {!val.initial && <div className='carousel-wrapper'> 
                             <Swiper
                                 modules={[Navigation, Pagination, Scrollbar, A11y, EffectCube]}
-                                spaceBetween={20}
+                                spaceBetween={5}
                                 slidesPerView={5}
                                 onSlideChange={() => console.log('slide change')}
                                 onSwiper={(swiper) => console.log(swiper)}
@@ -66,32 +79,21 @@ function Chat() {
                                 <SwiperSlide>
                                  <div id={e.productId}>
                                     <img src={e.image_url} alt={e.title} className='swiper-image'></img>
-                                     <p className="title">{e.title}</p>
-                                     <p className='last-price'>₹ {e.last_price}</p>
-                                     <p className='sale-price'>₹ {e.sale_price}</p>
+                                     <span className="title">{e.title}</span>
+                                     <div className='price-section'>
+                                      <span className='last-price'>₹ {e.last_price}</span>
+                                      <span className='sale-price'> ₹ {e.sale_price}</span>
+                                     </div>
                                 </div>
                              </SwiperSlide>
                                     )
                                 }) }
                             </Swiper>
                 </div>}
-                <div className="sectionBallonAi">
-                    <div className="ballon ai">{val.text}</div>
-                </div>
                 { !val.initial && <div className='filter-section'>
                     {val.filters && val.filters.map((e, i) => {
                         return (
                             <div className="filter-options" key={i} onClick={() =>  setQuestion(e)}>
-                                {e}
-                        </div>
-                    );
-                })}
-             </div> 
-            }
-            { !val.initial && <div className='filter-section'>
-                    {val.auto && val.auto.map((e, i) => {
-                        return (
-                            <div className="filter-options auto" key={i} onClick={() =>  setQuestion(e)}>
                                 {e}
                         </div>
                     );
@@ -122,21 +124,30 @@ function Chat() {
                 <div className="time">
                     Today at {showTime}
                 </div>
-            <div className=''>{resultHistory}</div>   
+            <div className=''>{resultHistory}</div>
+            <div ref={bottomRef} />
             {typing && <div className="message stark">
                 <div className="typing typing-1"></div>
                 <div className="typing typing-2"></div>
                 <div className="typing typing-3"></div>
             </div>}
-            </div>    
-        <div className="input">
-          <i className="fas fa-camera"></i><i className="far fa-laugh-beam"></i><input className="input" type="text" value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your message here!" ></input>
-          <img src={voice} alt="send" onClick={handleClickSend} className='voice'></img>
-          <img src={upload} alt="send" onClick={handleClickSend} className='upload'></img>
-          <img src={send} alt="send" onClick={handleClickSend} className='send'></img>
-        <i className="fas fa-microphone"></i>
+            </div>       
+          <div className="input">
+            <input className="input" type="text" value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your message here!" ></input>
+            <img src={voice} alt="send" onClick={handleClickSend} className='voice'></img>
+            <img src={upload} alt="send" onClick={handleClickSend} className='upload'></img>
+            <img src={send} alt="send" onClick={handleClickSend} className='send'></img>
         </div>
-      </div> 
+        <div className='auto-section'>
+                    {auto && auto.map((e, i) => {
+                        return (
+                            <div className="filter-options auto" key={i} onClick={() =>  setQuestion(e)}>
+                                {e}
+                        </div>
+                    );
+                })}
+          </div> 
+        </div>
     )
 }
 
