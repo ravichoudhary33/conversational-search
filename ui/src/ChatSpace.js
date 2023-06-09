@@ -1,6 +1,8 @@
 import './ChatSpace.css';
 import logo from './unbxd-logo.png';
 import send from './send.png';
+import voice from './voice.png';
+import upload from './upload-image.png';
 import { useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Scrollbar, A11y, EffectCube } from 'swiper';
@@ -11,7 +13,7 @@ function Chat() {
 
     const [question, setQuestion] = useState('');
 
-    const [history, setHistory] = useState([{key: 1, ai: true, text: 'How may I help you ?', initial: true, filters: [], products: [] }]);
+    const [history, setHistory] = useState([{key: 1, ai: true, text: 'How may I help you ?', initial: true, filters: [], products: [], auto: [] }]);
 
     const [typing, setTyping] = useState(false);
 
@@ -34,7 +36,7 @@ function Chat() {
         
         axios.post("http://192.168.2.150:8080/sites/express-1233/chatbot?uid=12", data )
             .then((response) => {
-                setHistory((current) => ([...current, {key:3, ai:true, text:response.data.text, filters: response.data.filter, products: response.data.Products}]));
+                setHistory((current) => ([...current, {key:3, ai:true, text:response.data.response.text, filters: response.data.response.filter, products: response.data.response.products, auto: response.data.response.autosuggest}]));
                 setTyping(false);
              })
             .catch((err) => {
@@ -46,14 +48,8 @@ function Chat() {
       }
 
       const resultHistory = history.map((val, i) => {
-        const regex = /\bhttps?:\/\/\S+/gi;
-        const separator = "****";
-        const urls = val.text.match(regex);
-        const newText = val.text.replace(regex, separator);
-        const parts = newText.split(separator);
       
         if (val.ai === true) {
-          if (!urls || urls.length === 0) { // zmieniony warunek
             return (
              <div className='outer-sectionAI'>
                 {!val.initial && <div className='carousel-wrapper'> 
@@ -69,9 +65,10 @@ function Chat() {
                                     return(
                                 <SwiperSlide>
                                  <div id={e.productId}>
-                                    <img src={e.imgUrl} alt={e.productName} className='swiper-image'></img>
-                                     <p className="legend">{e.productName}</p>
-                                     <p className='price'>{e.price}</p>
+                                    <img src={e.image_url} alt={e.title} className='swiper-image'></img>
+                                     <p className="title">{e.title}</p>
+                                     <p className='last-price'>₹ {e.last_price}</p>
+                                     <p className='sale-price'>₹ {e.sale_price}</p>
                                 </div>
                              </SwiperSlide>
                                     )
@@ -91,24 +88,20 @@ function Chat() {
                 })}
              </div> 
             }
+            { !val.initial && <div className='filter-section'>
+                    {val.auto && val.auto.map((e, i) => {
+                        return (
+                            <div className="filter-options auto" key={i} onClick={() =>  setQuestion(e)}>
+                                {e}
+                        </div>
+                    );
+                })}
+             </div> 
+            }
              </div>   
             );
-          } else {
-            return (
-              <div className="sectionBallonAi">
-                {urls.map((url, i) => {
-                  return (
-                    <div className="ballon ai" key={i}>
-                      {!i && parts[i]}
-                      <a href={url}>{url}</a>
-                      {parts[i + 1]}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          }
-        } else {
+        } 
+        else {
           return (
             <div className="sectionBallonHuman" key={i}>
               <div className="ballon human">{val.text}</div>
@@ -138,6 +131,8 @@ function Chat() {
             </div>    
         <div className="input">
           <i className="fas fa-camera"></i><i className="far fa-laugh-beam"></i><input className="input" type="text" value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your message here!" ></input>
+          <img src={voice} alt="send" onClick={handleClickSend} className='voice'></img>
+          <img src={upload} alt="send" onClick={handleClickSend} className='upload'></img>
           <img src={send} alt="send" onClick={handleClickSend} className='send'></img>
         <i className="fas fa-microphone"></i>
         </div>
