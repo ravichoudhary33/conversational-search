@@ -133,13 +133,35 @@ class QueryFilterStateAgent():
             resp = sorted(resp, key=lambda x: x.get("score", 0), reverse=True)
         return resp
 
+    def get_facets(self, user_id):
+        url = f"http://reranker.prod.use-1d.infra/v1.0/sites/express_com-u1456154309768/affinity/facet?userId={user_id}"
+        print(url)
+
+        json_data = {}
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                json_data = response.json()
+            else:
+                print("response status code from reranker:", response.status_code)
+        except:
+            with open("affinity-response.json") as f:
+                json_data = json.load(f)
+        return json_data
+
     def collect_message(self, user_id, human_input):
         if user_id in self.convo_history:
             user_context = self.convo_history[user_id]["context"]
             user_autosuggest_context = self.convo_history[user_id]["autosuggest_context"]
         else:
+            pers_facets = self.get_facets(user_id)
+
             self.convo_history[user_id] = {}
             user_context = self.context
+            user_context[0]["content"] += "The following facets determine the likes, dislikes and personality " \
+                "of the user. Higher score for a field indicates stronger interest of the user. The facets are " + \
+                json.dumps(pers_facets)
+            print(user_context)
             self.convo_history[user_id]["context"] = user_context
             user_autosuggest_context = self.autosuggest_context
             self.convo_history[user_id]["autosuggest_context"] = user_autosuggest_context
