@@ -25,6 +25,12 @@ services:
       timeout: 1m30s
       retries: 5
       start_period: 5s
+  my-app:
+    build:
+      context: .
+      dockerfile: ./ui/Dockerfile
+    ports:
+      - 3000:3000
   jupyter:
     image: jupyter/minimal-notebook:latest
     container_name: jupyter
