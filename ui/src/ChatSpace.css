@@ -99,7 +99,7 @@ html {
   position: relative;
   display: flex;
   flex-direction: column;
-  top: 60px;
+  top: 40px;
   left: 180px;
   width: 70rem;
   margin: 0 auto;
@@ -119,7 +119,7 @@ html {
 }
 .chat .messages {
   padding: 1rem;
-  max-height: 450px;
+  max-height: 500px;
   overflow-y: scroll;
   background: #f7f7f7;
   flex-shrink: 2;
@@ -395,12 +395,13 @@ html {
   .chat .sectionBallonAi .ai {
     background-color: #ffffff;
     color: #222222;
-    text-align: right;
+    text-align: left;
     border-radius: 25px 25px 25px 2px;
     float: right;
     box-shadow: 0px 9px 30px 0px rgba(44, 55, 79, 0.07);
     padding: 15px;
     margin-bottom: 10px;
+    max-width: 500px
   }
   .chat .sectionBallonAi .ai .typing {
     position: relative;
@@ -448,6 +449,7 @@ html {
     box-shadow: 0px 9px 30px 0px rgba(44, 55, 79, 0.07);
     padding: 15px;
     margin-bottom: 20px;
+    max-width: 500px;
   }
   
   .sectionQuest {
@@ -493,7 +495,15 @@ html {
 
 .filter-section {
     display: flex;
-    margin-bottom: 10px;
+    margin-bottom: 30px;
+}
+
+.auto-section {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  bottom: 115px;
+  z-index: 99999;
 }
 
 .filter-options {
@@ -504,22 +514,27 @@ html {
     background: #6098FF;
     margin-right: 5px;
     color: #ffffff;
-    box-shadow: 0px 9px 30px 0px rgba(44, 55, 79, 0.07);
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
     cursor: pointer;
 }
 
 .filter-options.auto {
-  background: #1e6091;
+  background: #ffffff;
+  border: 1px solid #1e6091;
+  color: #1e6091;
+  justify-content: center;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
 }
 
 .send {
     width: 25px;
     position: absolute;
-    right: 60px;
+    right: 40px;
 }
 
 .carousel-wrapper {
     width: 60%;
+    margin-bottom: 10px;
 }
 
 .swiper-image {
@@ -528,14 +543,14 @@ html {
 
 .voice {
   position: absolute;
-  right: 125px;
+  right: 100px;
   width: 50px;
   top: 23px;
 }
 
 .upload {
   position: absolute;
-  right: 94px;
+  right: 70px;
   top: 28px;
   width: 35px;
 }
