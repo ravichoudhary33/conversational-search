@@ -99,7 +99,7 @@ html {
   position: relative;
   display: flex;
   flex-direction: column;
-  top: 100px;
+  top: 60px;
   left: 180px;
   width: 70rem;
   margin: 0 auto;
@@ -119,7 +119,7 @@ html {
 }
 .chat .messages {
   padding: 1rem;
-  max-height: 400px;
+  max-height: 450px;
   overflow-y: scroll;
   background: #f7f7f7;
   flex-shrink: 2;
@@ -493,6 +493,7 @@ html {
 
 .filter-section {
     display: flex;
+    margin-bottom: 10px;
 }
 
 .filter-options {
@@ -507,6 +508,10 @@ html {
     cursor: pointer;
 }
 
+.filter-options.auto {
+  background: #1e6091;
+}
+
 .send {
     width: 25px;
     position: absolute;
@@ -519,4 +524,38 @@ html {
 
 .swiper-image {
     width: 100%;
+}
+
+.voice {
+  position: absolute;
+  right: 125px;
+  width: 50px;
+  top: 23px;
+}
+
+.upload {
+  position: absolute;
+  right: 94px;
+  top: 28px;
+  width: 35px;
+}
+
+.last-price {
+  text-decoration: line-through;
+  color: #999;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.sale-price {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.title {
+  text-overflow: ellipsis;
+  font-size: 13px;
+  width: 85%;
+  color: #666;
+  font-weight: 400;
 }
