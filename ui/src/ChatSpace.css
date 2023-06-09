@@ -502,7 +502,7 @@ html {
   display: flex;
   justify-content: center;
   position: relative;
-  bottom: 115px;
+  bottom: 125px;
   z-index: 99999;
 }
 
@@ -519,11 +519,16 @@ html {
 }
 
 .filter-options.auto {
+  width: 170px;
   background: #ffffff;
   border: 1px solid #1e6091;
   color: #1e6091;
   justify-content: center;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
 }
 
 .send {

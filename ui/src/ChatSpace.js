@@ -43,9 +43,9 @@ function Chat() {
             convo_id:"123"
         }
         
-        axios.post("http://192.168.2.150:8080/sites/express-1233/chatbot?uid=12", data )
+        axios.post("http://192.168.2.67:8080/sites/express-1233/chatbot?uid=12", data )
             .then((response) => {
-                setHistory((current) => ([...current, {key:3, ai:true, text:response.data.assistant_resp, filters: response.data.suggested_filters, products: response.data.response.products }]));
+                setHistory((current) => ([...current, {key:3, ai:true, text:response.data.assistant_resp, filters: response.data.suggested_filters, products: response.data.products }]));
                 setAuto(response.data.suggested_queries);
                 setTyping(false);
              })
@@ -78,11 +78,11 @@ function Chat() {
                                     return(
                                 <SwiperSlide>
                                  <div id={e.productId}>
-                                    <img src={e.image_url} alt={e.title} className='swiper-image'></img>
+                                    <img src={e.imageUrl} alt={e.title} className='swiper-image'></img>
                                      <span className="title">{e.title}</span>
                                      <div className='price-section'>
-                                      <span className='last-price'>₹ {e.last_price}</span>
-                                      <span className='sale-price'> ₹ {e.sale_price}</span>
+                                      <span className='last-price'>{e.lastPrice}</span>
+                                      <span className='sale-price'>{e.salePrice}</span>
                                      </div>
                                 </div>
                              </SwiperSlide>
@@ -134,14 +134,14 @@ function Chat() {
             </div>       
           <div className="input">
             <input className="input" type="text" value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your message here!" ></input>
-            <img src={voice} alt="send" onClick={handleClickSend} className='voice'></img>
-            <img src={upload} alt="send" onClick={handleClickSend} className='upload'></img>
+            <img src={voice} alt="send"  className='voice'></img>
+            <img src={upload} alt="send" className='upload'></img>
             <img src={send} alt="send" onClick={handleClickSend} className='send'></img>
         </div>
         <div className='auto-section'>
-                    {auto && auto.map((e, i) => {
+                    {auto && auto.slice(0, 4).map((e, i) => {
                         return (
-                            <div className="filter-options auto" key={i} onClick={() =>  setQuestion(e)}>
+                            <div className="filter-options auto" key={i} onClick={() =>  setQuestion(e) }>
                                 {e}
                         </div>
                     );
