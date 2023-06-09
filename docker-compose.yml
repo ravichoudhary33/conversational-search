@@ -31,6 +31,8 @@ services:
       dockerfile: ./ui/Dockerfile
     ports:
       - 3000:3000
+    volumes:
+      - ./ui/:/ui
   jupyter:
     image: jupyter/minimal-notebook:latest
     container_name: jupyter
