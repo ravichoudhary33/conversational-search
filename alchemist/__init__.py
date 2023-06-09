@@ -7,11 +7,13 @@ APPLICATION_CONFIG = load(open(config_file_path), Loader=Loader)
 
 
 REDIS_HOST = os.environ.get("")
+REDIS_ENTRIES = os.environ.get("")
 STATSD_HOST = os.environ.get("")
 STATSD_PORT = os.environ.get("")
 
 #downstream 
 RERANKER_HOST = os.environ.get("")
+RERANKER_NORM = os.environ.get("",100)
 SEARCH_HOST = os.environ.get("")
 OPEN_AI_HOST = os.environ.get("")
 

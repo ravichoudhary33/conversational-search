@@ -1,0 +1,28 @@
+{
+    "userId": "uid-1683602268183-16966",
+    "facetAffinity": {
+      "colorName_uFilter": {
+        "White": 6.206193986078503,
+        "Pitch Black": 100,
+        "Pecan": 5.2947948692418,
+        "Pale Yellow": 4.990995163629566,
+        "Pink": 4.990995163629566
+      },
+      "categoryType_uFilter": {
+        "Tops": 100,
+        "Bottoms": 2.3961666921528346,
+        "Sweaters": 1
+      },
+      "gender_uFilter": {
+        "women": 100
+      },
+      "type_uFilter": {
+        "Tanks": 9.00147275888102,
+        "Pants": 6.1885125217307015,
+        "Bodysuits": 100,
+        "Sweaters": 1.0126656853741147,
+        "Tees": 1
+      }
+    },
+    "msTaken": 42
+  }

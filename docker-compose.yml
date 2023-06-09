@@ -1,41 +1,20 @@
-version: "3.9"
+version: '3'
 
 services:
   alchemist:
-    build:
+    build: 
       dockerfile: ./alchemist/Dockerfile
       context: ./
     ports:
-      - '8080:8080'
+      - 8080:8080
     volumes:
       - './alchemist:/code/'
     depends_on:
-      - "redis"
+      - redis
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis
     ports:
       - "6379:6379"
-    volumes:
-        - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping"]
-      interval: 2s
-      timeout: 1m30s
-      retries: 5
-      start_period: 5s
-  jupyter:
-    image: jupyter/minimal-notebook:latest
-    container_name: jupyter
-    volumes:
-      - ./:/home/jovyan/chatbot
-    ports:
-      - 8888:8888
-    depends_on:
-      - "redis"
-    environment:
-      JUPYTER_ENABLE_LAB: "yes"
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      
 
 volumes:
   redis_data:

@@ -1,10 +1,14 @@
 langchain==0.0.123
-redis==4.5.3
+redis==3.5.3
 openai==0.27.2
 numpy
 pandas
 gdown
+typing
+responses
 fastapi==0.78.0
 uvicorn[standard]
 gunicorn==20.1.0
-yaml
+Pillow==9.5.0
+statsd==3.3.0
+datadog==0.39.0
