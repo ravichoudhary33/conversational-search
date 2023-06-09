@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Response
-import datetime
+import time
 from pydantic import BaseModel, parse_obj_as
 import json
 from datadog import statsd
@@ -67,7 +67,6 @@ async def facet_affinity(sitekey,request : Request, ):
 
     # response = TextResponse(Products=products)
     
-    start = datetime.datetime.now()
     query_params = request.query_params
     body = await request.json()
     botRequest = parse_obj_as(BotRequest, body) 
@@ -86,7 +85,7 @@ def init_bot(botRequest, botInput, userId, sitekey):
     convo_id = botRequest.convo_id
     if convo_id is None or len(str(convo_id))<1:
         if botInput == "query":
-            botResponsePrompts = initNewQueryConvo(userId, sitekey, botRequest)
+            botResponsePrompts, convo_id = initNewQueryConvo(userId, sitekey, botRequest)
         elif botInput == "TS":
             botResponsePrompts = initTopSeller(sitekey, userId)
         elif botInput == "RFU":
@@ -94,7 +93,7 @@ def init_bot(botRequest, botInput, userId, sitekey):
         # elif botInput == "image":
         #     initNewImageConvo()
     elif (convo_id is not None and len(str(convo_id))>1):
-        botResponsePrompts = initRedis(convo_id,userId, sitekey)
+        botResponsePrompts = initRedis(botRequest,userId, sitekey)
     botResponse = BotResponse(convo_id=convo_id, response=botResponsePrompts)
     return botResponse
 
@@ -135,7 +134,9 @@ def initNewQueryConvo(userId, sitekey , botRequest):
     #update redis
     if r.exists(f'{userId}'):
         redis_value = r.get(f'{userId}')
-        r.set(f'{userId}',update_redis_entries(redis_value, convo_id, None))        
+        r.set(f'{userId}',json.dumps(update_redis_entries(redis_value, convo_id, None))) 
+    else:
+        r.set(f'{userId}',json.dumps(add_convo_id(None, convo_id, None)))
     
     #call open AI library 
     ## TBD
@@ -143,7 +144,7 @@ def initNewQueryConvo(userId, sitekey , botRequest):
     #Call reranker
     facets, var_facets = reranker_client(sitekey, userId)
 
-    #### Call chatgpt to get relevant results or langchain specific results
+    #### Call chatgpt to get relevant results or model specific results
     #queryFilterStateAgent = QueryFilterStateAgent()
     model_response = list(collect_message(userId, botRequest.text))
     model_history = model_response[0] #product hist
@@ -157,9 +158,9 @@ def initNewQueryConvo(userId, sitekey , botRequest):
     redis_value = r.get(f'{userId}')
     json_str = redis_value.decode()
     val = json.loads(json_str)
-    r.set(f'{userId}',add_convo_id(val, convo_id, model_history))
+    r.set(f'{userId}',json.dumps(add_convo_id(val, convo_id, model_history)))
 
-    return botResponsePrompts
+    return botResponsePrompts, convo_id
     
 
 #def initNewImageConvo():
@@ -196,14 +197,21 @@ def initRFU(sitekey, userId):
     
 #def initTrending():
 
-def initRedis(convo_id,userId, sitekey):
+def initRedis(botRequest,userId, sitekey):
     redis_value = r.get(f'{userId}')
     json_str = redis_value.decode()
     val = json.loads(json_str)
-    if convo_id in val:
-        langchain_history = val[convo_id]['langchain_object']
-    existingLangChainModel(langchain_history)
+    if botRequest.convo_id in val:
+        model_history = val[botRequest.convo_id]['model_history']
+    model_response = list(collect_message(userId, botRequest.text))
+    model_history = model_response[0] #product hist
+    sugg_prompt = model_response[1] #prompt hist
+    sugg_queries = model_response[2] #autosugg hist
+    sugg_filters = model_response[3]
+    sugg_pdts = model_response[4]
+    botResponsePrompts = BotResponsePrompts(text=sugg_prompt, filter=sugg_filters, autosuggest=sugg_queries, products=sugg_pdts)
 
+    r.set(f'{userId}',json.dumps(add_convo_id(val, botRequest.convo_id, model_history)))
 
 
 #checks for number of entries in redis for the uid, removes 1 if 3 is there and then adds new.
@@ -216,7 +224,7 @@ def update_redis_entries(redis_value, convo_id, data):
             val = delete_convo_id(val)
         else:
             val = add_convo_id(val, convo_id, data)
-    return val
+        return val
             
 
 def delete_convo_id(val):
@@ -227,11 +235,13 @@ def delete_convo_id(val):
 def add_convo_id(val, convo_id, data):
     convo_data = {
         convo_id: {
-            'ts': int(datetime.now().timestamp()),
-            'langchain_object': data
+            'ts': int(time.time()),
+            'model_history': data
         }
     }
-
+    print(None)
+    if not val:
+        return convo_data
     val.update(convo_data)
     return val
 

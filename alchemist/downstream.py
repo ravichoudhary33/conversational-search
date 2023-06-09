@@ -78,7 +78,7 @@ def reranker_client(sitekey, userId):
     return facets, var_facets
 
 def brewer_client(filter):
-    url = 'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q=*'  + '&' + filter + '&fields=title,imageUrl,listPrice,salePrice'
+    url = 'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q=*'  + '&' + filter + '&fields=title,imageUrl,listPrice,salePrice&promotion=false'
     response = requests.get(url)
 
     if response.status_code == 200:
@@ -122,7 +122,7 @@ def top_query_brewer_client(filter):
     resp = []
     counter = 0
     for top_query in top_queries:
-        url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={top_query}&{filter}&fields=productId,title,imageUrl,listPrice,salePrice&rows=1'
+        url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={top_query}&{filter}&fields=productId,title,imageUrl,listPrice,salePrice&rows=1&promotion=false'
         response = requests.get(url)
         if response.status_code == 200:
             json_data = response.json()
@@ -156,7 +156,7 @@ def model_brewer_client(query, filters):
             continue
         fltrs.append(k+':'+v)
     print(fltrs)
-    url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields=title,imageUrl,listPrice,salePrice'
+    url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields=title,imageUrl,listPrice,salePrice&promotion=false'
     for filter in fltrs:
         url =  url + f'&filter={filter}' + f'&bq={filter}^{boost_value}'
     
