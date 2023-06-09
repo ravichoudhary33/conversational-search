@@ -10,9 +10,5 @@ fastapi==0.78.0
 uvicorn[standard]
 gunicorn==20.1.0
 Pillow==9.5.0
-<<<<<<< HEAD
-yaml
-=======
 statsd==3.3.0
 datadog==0.39.0
->>>>>>> 2bba826 (fix: backend complete implementation)
