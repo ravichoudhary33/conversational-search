@@ -2,9 +2,10 @@ import openai
 import re
 import json
 from brewer_fake import fake_filters, fake_prods
-# from main import Product
+from schemas import Product
 from pydantic import parse_obj_as
 from typing import List
+import requests
 
 
 class QueryFilterStateAgent():
@@ -24,6 +25,7 @@ class QueryFilterStateAgent():
             You respond in a short, very conversational friendly style. \
             """}]  # accumulate messages
 
+
     autosuggest_context = [{'role': 'system', 'content': f"""
             You are a query auto suggestion platform for apparel vertical ecommerse site. \
             Use the provided context to suggest short and accurate query suggestion only.\
@@ -34,6 +36,12 @@ class QueryFilterStateAgent():
             }}
             Wrap the output with triple backticks. Make sure auto_suggestions list does not have more than 5 elements.\
             """}]  # accumulate messages
+
+    summary_context = [{'role': 'system', 'content': f"""
+                You are a product description summarizer for apparel vertical ecommerse site. \
+                Given product attributes for list of products, generate a concise summary.\
+                Don't use product URL or product score for the summary.\
+                """}]  # accumulate messages
 
     def __init__(self):
         self.convo_history = {}
@@ -77,7 +85,11 @@ class QueryFilterStateAgent():
 
         res = self.get_completion(solr_prompt)
         # print(res)
-        return eval(res)
+        try:
+            res = eval(res)
+        except Exception as e:
+            res = ""
+        return res
 
     def parse_content_inside_backticks(self, string):
         pattern = r"```([\s\S]*?)```"
@@ -87,12 +99,39 @@ class QueryFilterStateAgent():
 
     def parse_autosuggest_response(self, autosuggest_response):
         autosuggestions = self.parse_content_inside_backticks(autosuggest_response)
-        return json.loads(autosuggestions[0])["auto_suggestions"]
+        try:
+            return json.loads(autosuggestions[0])["auto_suggestions"]
+        except Exception as e:
+            print("Exception", e)
+            return []
 
     def parse_prods(self, products):
         products = eval(products)['products']
         products = [{"title": product["titile"], "image_url": product["imageUrl"], "last_price": product["list_price"], "sale_price": product["salePrice"]} for product in products]
         return products
+
+    def fetch_products(self, query, filters):
+        fields = "title,imageUrl,listPrice,salePrice,score,description"
+        url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&filter={filters}&fields={fields}'
+        if not filters:
+            url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields={fields}'
+        response = requests.get(url)
+
+        resp = []
+        print(url, response.status_code)
+        if response.status_code == 200:
+            json_data = response.json()
+
+            pdts = json_data['response']['products']
+            # print(pdts)
+            for data in pdts:
+                # print(data)
+
+                product = {field: data[field] for field in fields.split(",")}
+
+                resp.append(product)
+            resp = sorted(resp, key=lambda x: x.get("score", 0), reverse=True)
+        return resp
 
     def collect_message(self, user_id, human_input):
         if user_id in self.convo_history:
@@ -107,8 +146,8 @@ class QueryFilterStateAgent():
 
         user_context.append({'role': 'user', 'content': f"{human_input}"})
         response = self.get_completion_from_messages(user_context)
-
         user_context.append({'role': 'assistant', 'content': f"{response}"})
+
         user_context.append({'role': 'user',
                         'content': "What is my Current query? Return only the search query. Do not print anything else but the search query. No extra words."})
         query_response = self.get_completion_from_messages(user_context)
@@ -127,6 +166,20 @@ class QueryFilterStateAgent():
         print(filters)
         user_context = user_context[:-1]
 
+        summary_query_response = ""
+        parsed_showcase_products = []
+        if query:
+            showcase_products = self.fetch_products(query, filters)
+            self.summary_context.append({'role': 'assistant', 'content': json.dumps(showcase_products)})
+            summary_query_response = self.get_completion_from_messages(self.summary_context)
+            self.summary_context = self.summary_context[:-1]
+            print(summary_query_response)
+            user_context.append({'role': 'assistant', 'content': summary_query_response})
+
+            parsed_showcase_products = [parse_obj_as(Product, showcase_product) for showcase_product in
+                                        showcase_products]
+            print(parsed_showcase_products)
+
         # autosuggest response
         user_autosuggest_context.append({'role': 'user', 'content': f"{human_input}"})
         user_autosuggest_context.append({'role': 'assistant', 'content': f"{response}"})
@@ -135,13 +188,15 @@ class QueryFilterStateAgent():
 
         parsed_as_response = self.parse_autosuggest_response(as_response)
 
+
+
         all_resp = {
-            'product_summary': "",
+            'product_summary': summary_query_response,
             'assistant': response,
             'assistant_autosuggest_response': as_response,
             'suggested_queries': parsed_as_response,
             'suggested_filters': fake_filters("", ""),
-            'products': []#self.parse_prods(fake_prods(""))
+            'products': parsed_showcase_products
         }
 
         return all_resp['product_summary'], all_resp['assistant'], all_resp['assistant_autosuggest_response'], all_resp['suggested_queries'], all_resp['suggested_filters'], all_resp['products']
