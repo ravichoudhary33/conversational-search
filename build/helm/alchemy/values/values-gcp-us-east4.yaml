@@ -1,0 +1,147 @@
+replicaCount: 2
+
+image: us.gcr.io/unbxdgcp/alchemy:v0.9.0
+setupImage: us.gcr.io/unbxdgcp/alchemy_setup:v0.9.0
+imageConfig:
+  pullPolicy: IfNotPresent
+
+releaseTag: latest
+
+region: us-east4
+app: alchemy
+env: prod
+
+config:
+  env: prod
+  region: us-east4
+
+rbac:
+  create: false
+
+statsd:
+  host: statsd.pilot-unbxd.infra
+  port: 8125
+
+wsgi:
+  threads:
+    4
+  processes:
+    4
+  metric:
+    enabled: true
+    # Whitelist of dogstatsd metrics to include (add more to enable)
+    whitelist:
+      - core.busy_workers
+      - core.idle_workers
+      - core.overloaded
+      - worker.requests
+      - worker.failed_requests
+  workers:
+    enabled: false
+    settings:
+      # Restart workers after this many requests
+      max_requests: 1000
+      # Restart workers after this many seconds
+      max_worker_lifetime: 3600
+      # should be less than requested memory
+      # Restart workers after this much resident memory
+      reload_on_rss: 512
+      # How long to wait before forcefully killing workers
+      worker_reload_mercy: 60
+
+albus:
+  host: http://configstore.pilot-unbxd.infra
+  nats_host: nats://nats-bridge-internal.pilot-unbxd.infra:4222
+  nats_service: alchemy
+  disable_cache: False
+  site_cache: True
+  vertical_property: True
+
+popularity:
+  redis: ub-ec.pilot-unbxd.infra:6379:1
+
+analytics_sql:
+  host: reporting-db.c3ostf6l1cca.us-east-1.rds.amazonaws.com
+  db: reports_db
+  user: unbxd
+  pwd: 20un8xd10
+
+recommendations:
+    aerospike: as-xdr01.nodes.prod.use-1d.infra,as-xdr02.nodes.prod.use-1d.infra,as-xdr03.nodes.prod.use-1d.infra,as-xdr04.nodes.prod.use-1d.infra,as-xdr05.nodes.prod.use-1d.infra,as-xdr06.nodes.prod.use-1d.infra,as-xdr07.nodes.prod.use-1d.infra
+    redis: temp_domain_name:6379:0  # pointing to cluster of nodes in use - 50.17.105.241, 54.166.173.121
+
+deployment:
+  env:
+    ELASTIC_APM_SERVER_URL: "http://apm.pilot-unbxd.infra:8200"
+    ELASTIC_APM_SERVICE_NAME: "alchemy-useast4"
+    GIMLI_ENDPOINT: "http://fields.pilot-unbxd.infra"
+    ASTERIX_URL: "http://asterix.pilot-unbxd.infra/"
+    BREWER_ENDPOINT: "http://brewer.pilot-unbxd.infra"
+    HAGRID_ENDPOINT: "http://hagrid.pilot-unbxd.infra"
+    FEED_ENDPOINT: http://feed.pilot-unbxd.infra
+    DES_ENDPOINT: http://des.pilot-unbxd.infra
+    BLACKPEARL_ENDPOINT: http://blackpearl.pilot-unbxd.infra
+    DALEK_ENDPOINT: http://dalek.pilot-unbxd.infra
+    POPULARITY_ENDPOINT: http://pop-sg-search.unbxdapi.com:6004
+    REDIS_HOST: ub-ec.pilot-unbxd.infra:6379:1
+    ATTRIBUTE_AFFINITY_REDIS_HOST: ub-ec.pilot-unbxd.infra:6379:3
+    LTR_REDIS_HOST: "ub-ec.pilot-unbxd.infra:6379:2"
+    QCP_HEAD_REDIS_HOST: "qcp-ec.pilot-unbxd.infra:6379:0"
+    QCP_TAIL_REDIS_HOST: "qcp-ec.pilot-unbxd.infra:6379:1"
+    LOG_LEVEL: ERROR
+    IMAGE_PULL_POLICY: IfNotPresent
+    PIPELINES_AUTH_ENABLED: "true"
+    PIPELINES_NAMESPACE: ai
+    PIPELINES_IFSVC_NAMESPACE: "search"
+    PIPELINES_MODELMESH_IFSVC_NAMESPACE: "modelmesh-serving"
+    PIPELINES_AUTH_REFRESH_DURATION_SECS: 7200
+    DEFAULT_MINIMUM_CLICKSTREAM_AVAILABILITY_DAYS: 3
+    UB_REDIS_HOST: ub-ec.pilot-unbxd.infra:6379
+    FEED_BUCKET: io-unbxd-feed-files-ss-dev
+    FEED_V2_BUCKET: io-feed-files-us-east4
+    DEFAULT_PIPELINE_TTL_SECONDS_AFTER_FINISHED: "300"
+
+service:
+  type: LoadBalancer
+  port: 80
+  annotations:
+    cloud.google.com/load-balancer-type: Internal
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: alchemy.pilot-unbxd.infra
+      paths:
+        - "/"
+  tls: []
+
+secrets:
+  enabled: false
+# base64 values (replace with correct values)
+  aws_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  personalize_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  kf_user_secret:
+    user: ZGVtbwo=
+    password: ZGVtbwo=
+
+resources:
+   limits:
+     cpu: 2
+     memory: 1024Mi
+   requests:
+     cpu: 2
+     memory: 1024Mi
+
+additional_labels: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

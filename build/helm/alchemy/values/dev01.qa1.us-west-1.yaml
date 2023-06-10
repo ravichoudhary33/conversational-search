@@ -1,0 +1,136 @@
+replicaCount: 2
+
+image: 012629307706.dkr.ecr.us-east-1.amazonaws.com/alchemy:v0.9.0
+setupImage: 012629307706.dkr.ecr.us-east-1.amazonaws.com/alchemy_setup:v0.9.0
+imageConfig:
+  pullPolicy: Always
+
+releaseTag: latest
+
+region: us-west-1
+app: alchemy
+env: dev01
+
+config:
+  env: dev01
+  region: us-west-1
+
+rbac:
+  create: false
+
+statsd:
+  host: statsd.qa1.us-west-1.infra
+  port: 8125
+
+wsgi:
+  threads:
+    2
+  processes:
+    2
+  metric:
+    enabled: false
+    # Whitelist of dogstatsd metrics to include, add more to enable
+    whitelist:
+      - core.overloaded
+      - worker.requests
+      - core.busy_workers
+      - core.idle_workers
+      - worker.failed_requests
+      - worker.core.write_errors
+  workers:
+    enabled: false
+
+albus:
+  host: http://configstore.dev01.qa1.us-west-1.infra
+  nats_host: nats://bridge-nats.search:4222
+  nats_service: alchemy
+  disable_cache: False
+  site_cache: True
+  vertical_property: True
+
+popularity:
+        redis: dalek-redis-master.search:6379
+
+analytics_sql:
+  host: reporting-db.c3ostf6l1cca.us-east-1.rds.amazonaws.com
+  db: reports_db
+  user: unbxd
+  pwd: 20un8xd10
+
+recommendations:
+    aerospike: as-xdr01.nodes.prod.use-1d.infra,as-xdr02.nodes.prod.use-1d.infra,as-xdr03.nodes.prod.use-1d.infra,as-xdr04.nodes.prod.use-1d.infra,as-xdr05.nodes.prod.use-1d.infra,as-xdr06.nodes.prod.use-1d.infra,as-xdr07.nodes.prod.use-1d.infra
+    redis: temp_domain_name:6379:0  # pointing to cluster of nodes in use - 50.17.105.241, 54.166.173.121
+
+deployment:
+  env:
+    ELASTIC_APM_SERVER_URL: "http://apm.use.infra:8200"
+    ELASTIC_APM_SERVICE_NAME: "alchemy-qa-us-west-1"
+    GIMLI_ENDPOINT: "http://gimli.search"
+    ASTERIX_URL: "http://asterix.search"
+    BREWER_ENDPOINT: "http://brewer.search"
+    HAGRID_ENDPOINT: "http://hagrid-ambassador.search"
+    FEED_ENDPOINT: http://feed.search
+    DES_ENDPOINT: http://des.search
+    BLACKPEARL_ENDPOINT: http://blackpearl.search
+    DALEK_ENDPOINT: http://dalek.search
+    POPULARITY_ENDPOINT: http://pop-sg-search.unbxdapi.com:6004
+    REDIS_HOST: dalek-redis-master.search:6379
+    ATTRIBUTE_AFFINITY_REDIS_HOST: dalek-redis-master.search:6379:3
+    LTR_REDIS_HOST: "dalek-redis-master.search:6379:2"
+    QCP_HEAD_REDIS_HOST: "dalek-redis-master.search:6379:0"
+    QCP_TAIL_REDIS_HOST: "dalek-redis-master.search:6379:1"
+    LOG_LEVEL: DEBUG
+    IMAGE_PULL_POLICY: Always
+    PIPELINES_HOST: "http://kubeflow.argocd.qa1.us-west-1.infra"
+    PIPELINES_AUTH_ENABLED: "true"
+    PIPELINES_NAMESPACE: ai
+    PIPELINES_IFSVC_NAMESPACE: "search"
+    PIPELINES_MODELMESH_IFSVC_NAMESPACE: "modelmesh-serving"
+    PIPELINES_PATCH_ARTIFACTS: "true"
+    UB_REDIS_HOST: dalek-redis-master.search:6379
+    PIPELINES_AUTH_REFRESH_DURATION_SECS: 7200
+    DEFAULT_MINIMUM_CLICKSTREAM_AVAILABILITY_DAYS: 3
+    # WHY SUCH SHITTY NAMES :(
+    FEED_BUCKET: io-unbxd-feed-files-ss-dev
+    FEED_V2_BUCKET: io-feed-files-qa1-us-west-1-us-west-1
+    DEFAULT_PIPELINE_TTL_SECONDS_AFTER_FINISHED: "300"
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: alchemy.dev01.qa1.us-west-1.infra
+      paths:
+        - "/"
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+secrets:
+  enabled: false
+# base64 values (replace with correct values)
+  aws_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  personalize_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  kf_user_secret:
+    user: ZGVtbwo=
+    password: ZGVtbwo=
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

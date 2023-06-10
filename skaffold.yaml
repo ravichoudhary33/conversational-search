@@ -1,0 +1,31 @@
+apiVersion: skaffold/v2beta6
+kind: Config
+metadata:
+  name: alchemy
+build:
+  tagPolicy:
+    sha256: {}
+  artifacts:
+    - image: alchemy
+      context: ./
+      docker:
+        dockerfile: ./alchemist/Dockerfile
+deploy:
+  helm:
+    releases:
+      - name: redis
+        chartPath: bitnami/redis
+        version: 17.0.7
+        remote: true
+        setValues:
+          auth.enabled: false
+          cluster.enabled: false
+      - name: alchemy
+        chartPath: build/helm/alchemy
+        remote: false
+        artifactOverrides:
+          image: alchemy
+        setValues:
+          service.type: ClusterIP
+        valuesFiles:
+          - build/helm/alchemy/values.yaml

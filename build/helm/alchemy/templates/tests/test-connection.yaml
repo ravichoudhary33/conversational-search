@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "alchemy.fullname" . }}-test-connection"
+  labels:
+{{ include "alchemy.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['{{ include "alchemy.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alchemy.fullname" . }}
+  annotations:
+    description: alchemy in us-east
+  labels:
+    app: {{ template "alchemy.name" . }}
+    chart: {{ template "alchemy.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ template "alchemy.fullname" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: "{{ template "alchemy.fullname" . }}"
+        env: {{ .Values.env }}
+        region: {{ .Values.region }}
+        release: {{ .Release.Name }}
+        {{- range $key, $val := .Values.additional_labels }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      annotations:
+        version: {{ .Values.releaseTag }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image }}"
+          imagePullPolicy: {{ .Values.imageConfig.pullPolicy }}
+          env:
+            {{- range $key, $val := .Values.deployment.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+            - name: ENV
+              value: "{{ .Values.env }}"
+            - name: REGION
+              value: "{{ .Values.region }}"
+            - name: STATSD_HOST
+              value: "{{ .Values.statsd.host }}"
+            - name: STATSD_PORT
+              value: "{{ .Values.statsd.port }}"
+            - name: ALBUSCLIENT_NATS_HOSTS
+              value: "{{ .Values.albus.nats_host }}"
+            - name: NATS_ENV
+              value: "{{ .Values.config.env }}"
+            - name: NATS_REGION
+              value: "{{ .Values.config.region }}"
+            - name: NATS_SERVICE
+              value: "{{ .Values.albus.nats_service }}"
+            - name: DISABLE_ALBUS_CACHE
+              value: "{{ .Values.albus.disable_cache }}"
+            - name: ALBUSCLIENT_ALBUS_HOST
+              value: "{{ .Values.albus.host }}"
+            - name: ENABLE_SITE_CACHE
+              value: "{{ .Values.albus.site_cache }}"
+            - name: ENABLE_VERTICAL_PROPERTY
+              value: "{{ .Values.albus.vertical_property }}"
+            - name: ANALYTICS_SQL_HOST
+              value: "{{ .Values.analytics_sql.host }}"
+            - name: ANALYTICS_SQL_REPORTS_DB
+              value: "{{ .Values.analytics_sql.db }}"
+            - name: ANALYTICS_SQL_USER
+              value: "{{ .Values.analytics_sql.user }}"
+            - name: ANALYTICS_SQL_PWD
+              value: "{{ .Values.analytics_sql.pwd }}"
+            - name: POPULARITY_REDIS_HOST
+              value: "{{ .Values.popularity.redis }}"
+            - name: RECOMMENDATIONS_AEROSPIKE_HOST
+              value: "{{ .Values.recommendations.aerospike }}"
+            - name: RECOMMENDATIONS_REDIS_HOST
+              value: "{{ .Values.recommendations.redis }}"
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/monitor
+              port: http
+            initialDelaySeconds: 120
+            failureThreshold: 3
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/monitor
+              port: http
+            initialDelaySeconds: 30
+            failureThreshold: 3
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

@@ -1,0 +1,316 @@
+replicaCount: 1
+
+image: 012629307706.dkr.ecr.us-east-1.amazonaws.com/alchemy:v0.9.0
+setupImage: 012629307706.dkr.ecr.us-east-1.amazonaws.com/alchemy_setup:v0.9.0
+imageConfig:
+  pullPolicy: IfNotPresent
+
+releaseTag: latest
+
+region: us-east-1
+app: alchemy
+env: prod
+
+config:
+  env: prod
+  region: us-east-1
+
+rbac:
+  create: false
+
+statsd:
+  host: statsd.prod.use-1d.infra
+  port: 8125
+
+wsgi:
+  threads:
+    2
+  processes:
+    3
+  metric:
+    enabled: true
+    # Whitelist of dogstatsd metrics to include (add more to enable)
+    whitelist:
+      - core.busy_workers
+      - core.idle_workers
+      - core.overloaded
+      - worker.requests
+      - worker.failed_requests
+  workers:
+    enabled: false
+    settings:
+      # Restart workers after this many requests
+      max_requests: 1000
+      # Restart workers after this many seconds
+      max_worker_lifetime: 3600
+      # should be less than requested memory
+      # Restart workers after this much resident memory
+      reload_on_rss: 512
+      # How long to wait before forcefully killing workers
+      worker_reload_mercy: 60
+
+albus:
+  host: http://configstore.prod.use-1d.infra
+  nats_host: nats://nats-bridge-internal.prod.use-1d.infra:4222
+  nats_service: alchemy
+  disable_cache: False
+  site_cache: True
+  vertical_property: True
+
+popularity:
+  redis: popularity-new.yirsfr.ng.0001.use1.cache.amazonaws.com:6379
+
+analytics_sql:
+  host: reporting-db.c3ostf6l1cca.us-east-1.rds.amazonaws.com
+  db: reports_db
+  user: unbxd
+  pwd: 20un8xd10
+
+recommendations:
+    aerospike: as-xdr01.nodes.prod.use-1d.infra,as-xdr02.nodes.prod.use-1d.infra,as-xdr03.nodes.prod.use-1d.infra,as-xdr04.nodes.prod.use-1d.infra,as-xdr05.nodes.prod.use-1d.infra,as-xdr06.nodes.prod.use-1d.infra,as-xdr07.nodes.prod.use-1d.infra
+    redis: temp_domain_name:6379:0  # pointing to cluster of nodes in use - 50.17.105.241, 54.166.173.121
+
+deployment:
+  env:
+    ELASTIC_APM_SERVER_URL: "http://apm.use.infra:8200"
+    ELASTIC_APM_SERVICE_NAME: "alchemy-usekf"
+    GIMLI_ENDPOINT: "http://fields.prod.use-1d.infra"
+    ASTERIX_URL: "http://asterix.prod.use-1d.infra/"
+    BREWER_ENDPOINT: "http://brewer.prod.use-1d.infra"
+    HAGRID_ENDPOINT: "http://hagrid.prod.use-1d.infra"
+    FEED_ENDPOINT: http://feed.prod.use-1d.infra
+    DES_ENDPOINT: http://des.prod.use-1d.infra
+    BLACKPEARL_ENDPOINT: http://blackpearl.prod.use-1d.infra
+    DALEK_ENDPOINT: http://dalek.prod.use-1d.infra
+    POPULARITY_ENDPOINT: http://pop-sg-search.unbxdapi.com:6004
+    REDIS_HOST: popularity-new.yirsfr.ng.0001.use1.cache.amazonaws.com:6379
+    ATTRIBUTE_AFFINITY_REDIS_HOST: popularity-new.yirsfr.ng.0001.use1.cache.amazonaws.com:6379
+    LTR_REDIS_HOST: "qcp-ec.prod.use-1d.infra:6379:2"
+    QCP_HEAD_REDIS_HOST: "qcp-ec.prod.use-1d.infra:6379:0"
+    QCP_TAIL_REDIS_HOST: "qcp-ec.prod.use-1d.infra:6379:1"
+    LOG_LEVEL: ERROR
+    IMAGE_PULL_POLICY: IfNotPresent
+    PIPELINES_AUTH_ENABLED: "true"
+    PIPELINES_NAMESPACE: ai
+    PIPELINES_IFSVC_NAMESPACE: "ai"
+    PIPELINES_MODELMESH_IFSVC_NAMESPACE: "modelmesh-serving"
+    PIPELINES_AUTH_REFRESH_DURATION_SECS: 7200
+    DEFAULT_MINIMUM_CLICKSTREAM_AVAILABILITY_DAYS: 3
+    UB_REDIS_HOST: ub-data-gen-prod.yirsfr.ng.0001.use1.cache.amazonaws.com:6379
+    DEFAULT_PIPELINE_TTL_SECONDS_AFTER_FINISHED: "300"
+
+service:
+  type: LoadBalancer
+  port: 80
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
+
+jobs:
+  - name: item-similarity
+    schedule: "0 04 ? * 0,2,4,6"
+    concurrencyPolicy: Replace
+    restartPolicy: OnFailure
+    serviceAccount:
+      name: "default-editor"
+    env:
+    - name: ALGORITHM
+      value: item-similarity
+    - name: MAX_CONCURRENCY
+      value: '8'
+    - name: SITES_TO_EXCLUDE
+    - name: OUTPUT_FORMAT
+      value: excel
+    - name: POLL_INTERVAL
+      value: '300'
+  - name: personalization
+    schedule: "30 8 * * *"
+    concurrencyPolicy: Replace
+    restartPolicy: OnFailure
+    serviceAccount:
+      name: "default-editor"
+    env:
+    - name: ALGORITHM
+      value: personalization
+    - name: MAX_CONCURRENCY
+      value: '3'
+    - name: SITES_TO_EXCLUDE
+    - name: OUTPUT_FORMAT
+      value: excel
+    - name: POLL_INTERVAL
+      value: '600'
+  - name: top-sellers
+    schedule: "0 0 ? * 1,4"
+    concurrencyPolicy: Replace
+    restartPolicy: OnFailure
+    serviceAccount:
+      name: "default-editor"
+    env:
+    - name: ALGORITHM
+      value: top-sellers
+    - name: MAX_CONCURRENCY
+      value: '8'
+    - name: SITES_TO_EXCLUDE
+    - name: OUTPUT_FORMAT
+      value: json
+    - name: POLL_INTERVAL
+      value: '3600'
+  - name: user-behaviour
+    schedule: "30 6 * * *"
+    concurrencyPolicy: Replace
+    restartPolicy: OnFailure
+    serviceAccount:
+      name: "default-editor"
+    env:
+    - name: ALGORITHM
+      value: user-behaviour
+    - name: MAX_CONCURRENCY
+      value: '15'
+    - name: SITES_TO_EXCLUDE
+    - name: OUTPUT_FORMAT
+      value: excel
+    - name: POLL_INTERVAL
+      value: '40'
+  - name: popularity
+    schedule: "30 9 * * *"
+    concurrencyPolicy: Replace
+    restartPolicy: OnFailure
+    serviceAccount:
+      name: "default-editor"
+    env:
+    - name: ALGORITHM
+      value: popularity
+    - name: MAX_CONCURRENCY
+      value: '15'
+    - name: SITES_TO_EXCLUDE
+      value: |
+        devwcs-garnethill-com701421513579330,devwcs-grandinroad-com701421513677931,devwcs-ballarddesigns-com701421513677967,
+        devwcs-frontgate-com701421513678009,devwcs3-garnethill-com701601550832037,frontgate-com701601521464564,
+        devwcs-improvementscatalog-com701421513677895,devwcs-frontgate-com-blog701421518539016,
+        devwcs-grandinroad-com-blog701601521718919,devwcs-improvementscatalog-com-blog701601521722317,
+        frontgate-com-blog701601521722882,grandinroad-com-blog701601521723404,
+        improvementscatalog-com701601521723830,improvementscatalog-com-blog701601521723900,
+        devwcs3-frontgate-com701601552392677,devwcs3-ballarddesigns-com701601552392730,
+        devwcs3-grandinroad-com701601552392775,devwcs-Ryllace-com701601554203903,
+        ryllace-com701601558691878,dev-ballards-popularsearch701601605600019,
+        prod-ballards-popularsearch806381614931932
+    - name: OUTPUT_FORMAT
+      value: excel
+    - name: POLL_INTERVAL
+      value: '40'
+  - name: ltr
+    schedule: "0 04 ? * 0,2,4,6"
+    concurrencyPolicy: Replace
+    restartPolicy: OnFailure
+    serviceAccount:
+      name: "default-editor"
+    env:
+    - name: ALGORITHM
+      value: ltr
+    - name: MAX_CONCURRENCY
+      value: '20'
+    - name: SITES_TO_EXCLUDE
+    - name: OUTPUT_FORMAT
+      value: csv
+    - name: POLL_INTERVAL
+      value: '300'
+
+
+jobsc:
+  image:
+      repository: 012629307706.dkr.ecr.us-east-1.amazonaws.com/alchemy/deploy/runner
+      tag: v0.9.0
+      imagePullPolicy: Always
+  env:
+  - name: ALBUS_URL
+    value: http://configstore.prod.use-1d.infra
+  - name: alchemy_URL
+    value: http://alchemy.prod.use-1d.infra
+  - name: GIMLI_URL
+    value: fields.prod.use-1d.infra
+  - name: REDIS_HOST
+    value: popularity-new.yirsfr.ng.0001.use1.cache.amazonaws.com:6379:1
+  - name: OUTPUT_S3_BASE_PATH
+    value: ai-pipeline-metadata/kubeflow/us-east-1/prod
+  - name: OUTPUT_FILE_PATH
+    value: /tmp/outputs/output_file_path/data
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        key: AWS_ACCESS_KEY_ID
+        name: aws-secret
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        key: AWS_SECRET_ACCESS_KEY
+        name: aws-secret
+  - name: LOG_LEVEL
+    value: DEBUG
+  - name: SLACK_WEBHOOK_URL
+    value: https://hooks.slack.com/services/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
+  command: ["python3"]
+  args:
+    - /pipelines/component/src/main.py
+    - --algorithm
+    - $(ALGORITHM)
+    - --region
+    - $(REGION_ENV)
+    - --alchemy-url
+    - $(alchemy_URL)
+    - --albus-url
+    - $(ALBUS_URL)
+    - --gimli-url
+    - $(GIMLI_URL)
+    - --redis-host
+    - $(REDIS_HOST)
+    - --max-concurrency
+    - $(MAX_CONCURRENCY)
+    - --sites-to-exclude
+    - $(SITES_TO_EXCLUDE)
+    - --output-format
+    - $(OUTPUT_FORMAT)
+    - --poll-interval
+    - $(POLL_INTERVAL)
+    - --output-s3-base-path
+    - $(OUTPUT_S3_BASE_PATH)
+    - --output-file-path
+    - $(OUTPUT_FILE_PATH)
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: alchemy.dev.in
+      paths:
+        - "/"
+  tls: []
+
+secrets:
+  enabled: false
+# base64 values (replace with correct values)
+  aws_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  personalize_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  kf_user_secret:
+    user: ZGVtbwo=
+    password: ZGVtbwo=
+
+resources:
+   limits:
+     cpu: 1
+     memory: 512Mi
+   requests:
+     cpu: 100m
+     memory: 256Mi
+
+additional_labels: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

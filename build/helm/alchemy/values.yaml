@@ -1,0 +1,159 @@
+replicaCount: 1
+
+image: 012629307706.dkr.ecr.us-east-1.amazonaws.com/alchemy:latest
+imageConfig:
+  pullPolicy: IfNotPresent
+
+releaseTag: latest
+
+region: us-east-1
+app: alchemy
+env: dev
+
+config:
+  env: dev
+  region: us-east-1
+
+rbac:
+  create: false
+
+statsd:
+  host: statsd-use.unbxd.io
+  port: 8125
+
+wsgi:
+  threads:
+    1
+  processes:
+    2
+  metric:
+    enabled: true
+    # Whitelist of dogstatsd metrics to include, add more to enable
+    whitelist:
+#      - core.total_tx
+#      - core.total_rss
+#      - core.total_vsz
+      - core.overloaded
+      - worker.requests
+#      - worker.respawns
+#      - worker.rss_size
+#      - worker.total_tx
+#      - worker.vsz_size
+      - core.busy_workers
+      - core.idle_workers
+#      - core.routed_signals
+#      - socket.listen_queue
+#      - worker.running_time
+#      - worker.core.requests
+#      - core.unrouted_signals
+#      - worker.delta_requests
+#      - core.avg_response_time
+#      - worker.core.exceptions
+      - worker.failed_requests
+#      - core.total_running_time
+#      - worker.core.read_errors
+#      - worker.avg_response_time
+      - worker.core.write_errors
+#      - worker.core.routed_requests
+#      - worker.core.static_requests
+#      - worker.core.offloaded_requests
+  workers:
+    enabled: false
+    settings:
+      # Restart workers after this many requests
+      max_requests: 100
+      # Restart workers after this many seconds
+      max_worker_lifetime: 600
+      # should be less than requested memory
+      # Restart workers after this much resident memory
+      reload_on_rss: 256
+      # How long to wait before forcefully killing workers
+      worker_reload_mercy: 60
+
+albus:
+  host: http://albus:7688
+  nats_host: nats://nats-main:4222
+  nats_service: alchemy
+  disable_cache: False
+  site_cache: True
+  vertical_property: True
+
+popularity:
+  redis: redis-master:6379
+
+analytics_sql:
+  host: mysql
+  db: reports_db
+  user: unbxd
+  pwd: 20un8xd10
+recommendations:
+    aerospike: as-xdr01.nodes.prod.use-1d.infra,as-xdr02.nodes.prod.use-1d.infra,as-xdr03.nodes.prod.use-1d.infra,as-xdr04.nodes.prod.use-1d.infra,as-xdr05.nodes.prod.use-1d.infra,as-xdr06.nodes.prod.use-1d.infra,as-xdr07.nodes.prod.use-1d.infra
+    redis: temp_domain_name:6379:0  # pointing to cluster of nodes in use - 50.17.105.241, 54.166.173.121
+
+deployment:
+  env:
+    ELASTIC_APM_SERVER_URL: "http://apm.use.infra:8200"
+    ELASTIC_APM_SERVICE_NAME: "alchemy-travis"
+    GIMLI_ENDPOINT: "http://fields.prod.use-1d.infra"
+    ASTERIX_URL: "http://asterix.prod.use-1d.infra/"
+    FEED_ENDPOINT: http://feed.prod.use-1d.infra
+    DES_ENDPOINT: http://des.prod.use-1d.infra
+    BLACKPEARL_ENDPOINT: http://blackpearl.prod.use-1d.infra
+    DALEK_ENDPOINT: http://dalek.prod.use-1d.infra
+    POPULARITY_ENDPOINT: http://pop-sg-search.unbxdapi.com:6004
+    REDIS_HOST: redis-master:6379
+    ATTRIBUTE_AFFINITY_REDIS_HOST: redis-master:6379
+    LOG_LEVEL: ERROR
+    IMAGE_PULL_POLICY: Always
+    PIPELINES_AUTH_ENABLED: "false"
+    PIPELINES_PATCH_ARTIFACTS: "true"
+    PIPELINES_AUTH_REFRESH_DURATION_SECS: 7200
+    DEFAULT_MINIMUM_CLICKSTREAM_AVAILABILITY_DAYS: 3
+    UB_REDIS_HOST: redis-master:6379
+
+service:
+  type: NodePort
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: alchemy.dev.in
+      paths:
+        - "/"
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+secrets:
+  enabled: true
+# base64 values (replace with correct values)
+  aws_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  personalize_secret:
+    AccessKeyId: ZGVtbwo=
+    SecretAccessKey: ZGVtbwo=
+  kf_user_secret:
+    user: ZGVtbwo=
+    password: ZGVtbwo=
+
+resources: {}
+
+additional_labels:
+  test: works
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+jobsc:
+  additional_labels:
+    spotinst.io/restrict-scale-down: "true"
