@@ -31,20 +31,20 @@ services:
       dockerfile: ./ui/Dockerfile
     ports:
       - 3000:3000
-    volumes:
-      - ./ui/:/ui
-  jupyter:
-    image: jupyter/minimal-notebook:latest
-    container_name: jupyter
-    volumes:
-      - ./:/home/jovyan/chatbot
-    ports:
-      - 8888:8888
-    depends_on:
-      - "redis"
-    environment:
-      JUPYTER_ENABLE_LAB: "yes"
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    # volumes:
+    #   - ./ui/:/ui
+  # jupyter:
+  #   image: jupyter/minimal-notebook:latest
+  #   container_name: jupyter
+  #   volumes:
+  #     - ./:/home/jovyan/chatbot
+  #   ports:
+  #     - 8888:8888
+  #   depends_on:
+  #     - "redis"
+  #   environment:
+  #     JUPYTER_ENABLE_LAB: "yes"
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
       
 
 volumes:

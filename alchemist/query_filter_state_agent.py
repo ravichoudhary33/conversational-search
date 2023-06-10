@@ -6,10 +6,11 @@ from schemas import Product
 from pydantic import parse_obj_as
 from typing import List
 import requests
+# from vector_store import RedisProductRetriever
 
 
 class QueryFilterStateAgent():
-    context = [{'role': 'system', 'content': f"""
+    context_v2 = [{'role': 'system', 'content': f"""
             You are an AI assistant for an e-commerce platform and help the user find the relevant product, based on user query. \
             Refrain from apologizing unnecessarily. \
             You are an automated service to collect requirements for a product. \
@@ -24,17 +25,33 @@ class QueryFilterStateAgent():
             Eg if user searches for red sports shoes, query will be red sports shoes and filters will be {{"color": "red"}} \
             You respond in a short, very conversational friendly style. \
             """}]  # accumulate messages
+    
+    context = [{'role': 'system', 'content': f"""
+            You are an AI assistant for an e-commerce platform and help the user find the relevant product, based on user query. \
+            Identify the user gender as the conversation goes on.\
+            While giving the user preferenence keep that in mind. \
+            You are an automated service to collect requirements for a product. \
+            You first greet the customer, then collects the requirement, \
+            and then ask if the user like to add to the cart. \
+            You wait to collect the entire requirement, then summarize it and check for a final \
+            time if the customer wants to add anything else. \
+            Finally, you collect the payment.\
+            Make sure to clarify all options, extras and sizes uniquely. \
+            You respond in a short, very conversational friendly style. \
+            """}]  # accumulate messages
 
 
     autosuggest_context = [{'role': 'system', 'content': f"""
-            You are a query auto suggestion platform for apparel vertical ecommerse site. \
+            You are a query suggestion platform for apparel vertical ecommerse site. \
             Use the provided context to suggest short and accurate query suggestion only.\
+            Do not user more then 15 characters.\
             Format the output as a JSON object with only keys as auto_suggestions without any additional text.\
+            Make sure auto_suggestions list does not have more than 4 elements.\
+            Wrap the output with triple backticks.\
             Here's an example of the expected output format:\
-            {{
-                "auto_suggestions": [suggestion 1, suggestion 2]
-            }}
-            Wrap the output with triple backticks. Make sure auto_suggestions list does not have more than 5 elements.\
+            ```{{
+                "auto_suggestions": [suggestion_first, suggestion_second, ...]
+            }}```
             """}]  # accumulate messages
 
     summary_context = [{'role': 'system', 'content': f"""
@@ -43,8 +60,12 @@ class QueryFilterStateAgent():
                 Don't use product URL or product score for the summary.\
                 """}]  # accumulate messages
 
+
     def __init__(self):
         self.convo_history = {}
+        # self.productRetriever = RedisProductRetriever()
+        # self.productRetriever.create_vector_store()
+        
 
     def get_completion_from_messages(self, messages, model="gpt-3.5-turbo", temperature=0, max_tokens=500):
         response = openai.ChatCompletion.create(
@@ -111,8 +132,46 @@ class QueryFilterStateAgent():
         return products
 
     def fetch_products(self, query, filters):
+        query = query.replace("'", '').replace('"', '').replace('.', '').replace('!', '').replace('?', '')
+        with open('affinity.json') as file:
+            affinity = json.load(file)
+            #print(affinity)
+        express_top_facets = ["length_uFilter", "color_uFilter", "fit_uFilter", "sortPrice", "size_uFilter", "categoryType_uFilter", "type_uFilter", "gender_uFilter", "legShape_uFilter", "sleeveLength_uFilter", "occasion_uFilter", "styleRefinement_uFilter", "rise_uFilter"]
+        json_data1 = {
+            "userId": "uid-1683602268183-16966",
+            "facetAffinity": {},
+            "msTaken": 42
+        }
+        data = json_data1
+        facetAffinity = data['facetAffinity']
+        facets = []
+        if len(facetAffinity)<4:
+            for facet in express_top_facets:
+                if facet not in facets:
+                    facets.append(facet)
+                if len(facets)==4:
+                    break
+
+        print(facets)
+        filter = []
+        for facet in facets:
+            if facet in affinity:
+                filter.append(facet + ':' + list(affinity[facet].keys())[0])
+        
+        filter = ','.join(filter)
+        if len(filter)>=4:
+            filter = filter[:4]
+
+        print(filter)
+
         fields = "title,imageUrl,listPrice,salePrice,score,description"
-        url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&filter={filters}&fields={fields}'
+        
+        url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields={fields}'
+        for ind in range(len(filter)):
+            if ind>len(filter) or ind>len(facets):
+                break
+            url = url + f'&filter={filter[ind]}' + f'&bq={facets[ind]}^{100}'
+
         if not filters:
             url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields={fields}'
         response = requests.get(url)
@@ -158,9 +217,10 @@ class QueryFilterStateAgent():
 
             self.convo_history[user_id] = {}
             user_context = self.context
-            user_context[0]["content"] += "The following facets determine the likes, dislikes and personality " \
-                "of the user. Higher score for a field indicates stronger interest of the user. The facets are " + \
-                json.dumps(pers_facets)
+            if len(pers_facets) > 10:
+                user_context[0]["content"] += "The following facets determine the likes, dislikes and personality " \
+                    "of the user. Higher score for a field indicates stronger interest of the user. The facets are " + \
+                    json.dumps(pers_facets)
             print(user_context)
             self.convo_history[user_id]["context"] = user_context
             user_autosuggest_context = self.autosuggest_context
@@ -170,39 +230,41 @@ class QueryFilterStateAgent():
         response = self.get_completion_from_messages(user_context)
         user_context.append({'role': 'assistant', 'content': f"{response}"})
 
-        user_context.append({'role': 'user',
-                        'content': "What is my Current query? Return only the search query. Do not print anything else but the search query. No extra words."})
-        query_response = self.get_completion_from_messages(user_context)
-        query = self.extract_imp_info(query_response)
-        user_context = user_context[:-1]
-        print("Current query:", query_response)
-        print(query)
-        user_context.append({'role': 'user',
-                        'content': "What are my Current filters? Print only the current filters in json format and nothing else. No extra words"})
-        filter_response = self.get_completion_from_messages(user_context)
-        filters = self.extract_imp_info(filter_response)
-        if filters:
-            filters = self.get_solr_filters(filters)
+        #### Comment logic for finding filter and query
+        # user_context.append({'role': 'user',
+        #                 'content': "What is my Current query? Return only the search query. Do not print anything else but the search query. No extra words."})
+        # query_response = self.get_completion_from_messages(user_context)
+        # query = self.extract_imp_info(query_response)
+        # user_context = user_context[:-1]
+        # print("Current query:", query_response)
+        # print(query)
+        # user_context.append({'role': 'user',
+        #                 'content': "What are my Current filters? Print only the current filters in json format and nothing else. No extra words"})
+        # filter_response = self.get_completion_from_messages(user_context)
+        # filters = self.extract_imp_info(filter_response)
+        # if filters:
+        #     filters = self.get_solr_filters(filters)
 
-        print("Current filters:", filter_response)
-        print(filters)
-        user_context = user_context[:-1]
+        # print("Current filters:", filter_response)
+        # print(filters)
+        # user_context = user_context[:-1]
 
-        summary_query_response = ""
-        parsed_showcase_products = []
-        if query:
-            showcase_products = self.fetch_products(query, filters)
-            self.summary_context.append({'role': 'assistant', 'content': json.dumps(showcase_products)})
-            summary_query_response = self.get_completion_from_messages(self.summary_context)
-            self.summary_context = self.summary_context[:-1]
-            print(summary_query_response)
-            user_context.append({'role': 'assistant', 'content': summary_query_response})
+        # summary_query_response = ""
+        # parsed_showcase_products = []
+        # if query:
+        #     showcase_products = self.fetch_products(query, filters='')
+        #     self.summary_context.append({'role': 'assistant', 'content': json.dumps(showcase_products)})
+        #     summary_query_response = self.get_completion_from_messages(self.summary_context)
+        #     self.summary_context = self.summary_context[:-1]
+        #     print(summary_query_response)
+        #     #user_context.append({'role': 'assistant', 'content': summary_query_response})
 
-            parsed_showcase_products = [parse_obj_as(Product, showcase_product) for showcase_product in
-                                        showcase_products]
-            print(parsed_showcase_products)
+        #     parsed_showcase_products = [parse_obj_as(Product, showcase_product) for showcase_product in
+        #                                 showcase_products]
+        #     print(parsed_showcase_products)
 
-        # autosuggest response
+
+        # get query suggestions response
         user_autosuggest_context.append({'role': 'user', 'content': f"{human_input}"})
         user_autosuggest_context.append({'role': 'assistant', 'content': f"{response}"})
         as_response = self.get_completion_from_messages(user_autosuggest_context)
@@ -211,13 +273,80 @@ class QueryFilterStateAgent():
         parsed_as_response = self.parse_autosuggest_response(as_response)
 
 
+        ## based on the current respone figure out if it's a follow up question, else summaries the query
+        # some variable to initialize
+        summary_query_response = ""
+        parsed_showcase_products = []
+
+        is_follow_up = f"""
+            Given the query delimited by triple backticks. Return if the given query is a follow up \
+            questions. Give your answer as either yes or no. For example if it's a greeting query then obviously \
+            it's a follow up so in that case the answer should be yes.\
+            Query text: ```{human_input}```
+        """
+        f_response = self.get_completion(is_follow_up)
+        print(f"follow up query response: {f_response}")
+        if len(f_response) > 0 and 'no' in f_response.lower():
+            # means it's not a follow up so apply search query
+            # if we are here then get the 
+            convo_history = self.convo_history[user_id]["context"]
+            print(f"Convo history till now: {convo_history[1:]}")
+            compressed_query_prompt = f"""
+                Given the chat history of the conversation delimited by triple backticks. Return the \
+                small query containing the user requirements. and the suggested solr filters\
+                Do not use more than 50 characters for the query and do not use repeated information.\
+                The query should be non instructional.
+                Chat History: ```{convo_history}```
+                Return the output as a JSON object with two key with name condesensed_query and suggested_filters.\
+                Sample Ouput is delimited by triple backticks:-
+                ``` {{'condensed_query': <condensed query>, 'suggested_filters': <suggested filters> }}
+            """
+            new_query_resp = self.get_completion(compressed_query_prompt)
+            print(f"The condensed query resp: {new_query_resp}")
+            # get the products
+            try:
+                resp = eval(new_query_resp)
+                f = ''#resp['suggested_filters']
+                q = resp['condensed_query']
+            except:
+                q = new_query_resp
+                f = ''
+            print(f"resolved query: {q}")
+            print(f"resolved filter: {f}")
+
+            ## given the query and the list of facet for that site give me most three relevant facet for that query
+            # relevant_facet_prompt = f""""
+            #     Given a search query delimited by ``` and a list of facets delimited by ```, return three most relevant facet for that query.
+            #     Given Query:  ``` {q} ```
+            #     Given Facet: ``` ["length_uFilter", "color_uFilter", "fit_uFilter", "sortPrice", "size_uFilter", "type_uFilter", "gender_uFilter", "legShape_uFilter", "sleeveLength_uFilter", "occasion_uFilter", "styleRefinement_uFilter", "rise_uFilter"] ```
+            #     Return output as a list. 
+            #     Sample output: ``` [ <<facet_1>>, <<facet_2>>, ...]
+            # """
+
+            # with open('affinity.json') as file:
+            #     affinity = json.load(file) 
+            
+            
+            # facet_resp = self.get_completion(relevant_facet_prompt)
+            # print(f"The returned facet resp: {facet_resp}")
+
+            # filter = []
+            # for facet in facet_resp:
+            #     if facet in affinity:
+            #         filter.append(facet + ':' + list(affinity[facet].keys())[0])
+            
+
+            showcase_products = self.fetch_products(query = q, filters=f)
+            parsed_showcase_products = [parse_obj_as(Product, showcase_product) for showcase_product in
+                                        showcase_products]
+
 
         all_resp = {
             'product_summary': summary_query_response,
             'assistant': response,
             'assistant_autosuggest_response': as_response,
             'suggested_queries': parsed_as_response,
-            'suggested_filters': fake_filters("", ""),
+            'suggested_filters': [f] if len(f) > 0 else [], #fake_filters("", ""),
             'products': parsed_showcase_products
         }
 
