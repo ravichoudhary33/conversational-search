@@ -4,4 +4,4 @@ def fake_prods(query):
     """
 
 def fake_filters(user_id, query):
-    return ["hrx", "Raymond", "Below 5K"]
+    return [] #["hrx", "Raymond", "Below 5K"]

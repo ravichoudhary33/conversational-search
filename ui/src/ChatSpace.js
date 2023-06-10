@@ -43,7 +43,7 @@ function Chat() {
             convo_id:"123"
         }
         
-        axios.post("http://192.168.2.67:8080/sites/express-1233/chatbot?uid=12", data )
+        axios.post("http://localhost:8080/sites/express-1233/chatbot?uid=12", data )
             .then((response) => {
                 setHistory((current) => ([...current, {key:3, ai:true, text:response.data.assistant_resp, filters: response.data.suggested_filters, products: response.data.products }]));
                 setAuto(response.data.suggested_queries);
