@@ -250,7 +250,7 @@ class QueryFilterStateAgent():
             self.convo_history[user_id]["autosuggest_context"] = user_autosuggest_context
 
         user_context.append({'role': 'user', 'content': f"{human_input}"})
-        # user_context.append({'role': 'user', 'content': f"Don't suggest any products."})
+        user_context.append({'role': 'user', 'content': f"Do not list the products in the output"})
         response = self.get_completion_from_messages(user_context)
         user_context.append({'role': 'assistant', 'content': f"{response}"})
 
