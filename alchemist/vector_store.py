@@ -1,4 +1,8 @@
-# import json
+import json
+import pandas as pd
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores.redis import Redis as RedisVectorStore
+
 #
 # from langchain.schema import BaseRetriever
 # from langchain.vectorstores import VectorStore
@@ -67,3 +71,46 @@
 #                 metadata=doc.metadata
 #             ))
 #         return docs
+
+def createVectorStore(NUMBER_PRODUCTS=1000):
+    file = "express_com-u1456154309768-[1686213365723015437]--[3bd1ed46-1d87-4fa8-9775-bf30e4b177fc]-express_com-u1456154309768_2023_06_08_08_35_38_data_products.json"
+    with open(file) as f:
+        feed_data = json.load(f)
+    
+    # get the feed data
+    feed_data = feed_data["feed"]["catalog"]["add"]["items"]
+    # select few fields only
+    fields = ["title","imageUrl","listPrice","salePrice","description", "brands", "gender", "categoryType", "color"]
+    all_prods_df = pd.DataFrame(feed_data)[fields].copy()
+    all_prods_df["item_name"] = all_prods_df['title'].astype(str) +". "+ all_prods_df["description"]
+
+    # Get the first 2500 products
+    product_metadata = ( 
+        all_prods_df
+        .head(NUMBER_PRODUCTS)
+        .to_dict(orient='index')
+    )
+
+    # data that will be embedded and converted to vectors
+    texts = [
+        v['item_name'] for k, v in product_metadata.items()
+    ]
+    
+    # product metadata that we'll store along our vectors
+    metadatas = list(product_metadata.values())
+
+    # create the vector store
+    embedding = OpenAIEmbeddings()
+    # name of the Redis search index to create
+    index_name = "products_v2"
+    # assumes you have a redis stack server running on within your docker compose network
+    redis_url = "redis://redis:6379"
+    # create and load redis with documents
+    vectorstore = RedisVectorStore.from_texts(
+        texts=texts,
+        metadatas=metadatas,
+        embedding=embedding,
+        index_name=index_name,
+        redis_url=redis_url
+    )
+    return vectorstore

@@ -9,6 +9,7 @@ from chat import chat
 from query_filter_state_agent import QueryFilterStateAgent
 import openai
 import json
+from vector_store import createVectorStore
 
 app = FastAPI()
 
@@ -29,7 +30,8 @@ app.add_middleware(
 )
 
 convo_history = {}
-queryFilterStateAgent = QueryFilterStateAgent()
+vector_store = createVectorStore()
+queryFilterStateAgent = QueryFilterStateAgent(vector_store)
 
 @app.get("/")
 def read_root():
@@ -44,9 +46,9 @@ class TextResponse(BaseModel):
     product_summary_resp: str
     assistant_resp: str
     as_resp: str
-    suggested_queries: list[str]
-    suggested_filters: list[str]
-    products: list[Product]
+    suggested_queries: list[str] = []
+    suggested_filters: list[str] = []
+    products: list[Product] = []
 
 @app.post("/sites/{sitekey}/chatbot", response_model=TextResponse)
 def get_text_chat_response(sitekey,request: TextRequest,query_request : Request):
