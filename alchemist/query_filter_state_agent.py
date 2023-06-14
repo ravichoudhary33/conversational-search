@@ -7,6 +7,8 @@ from pydantic import parse_obj_as
 from typing import List
 import requests
 # from vector_store import RedisProductRetriever
+import random
+import os
 
 
 class QueryFilterStateAgent():
@@ -38,6 +40,7 @@ class QueryFilterStateAgent():
             Finally, you collect the payment.\
             Make sure to clarify all options, extras and sizes uniquely. \
             You respond in a short, very conversational friendly style. \
+            You never show the list of products but only gather the requirements.\
             """}]  # accumulate messages
 
 
@@ -61,8 +64,9 @@ class QueryFilterStateAgent():
                 """}]  # accumulate messages
 
 
-    def __init__(self):
+    def __init__(self, vector_store):
         self.convo_history = {}
+        self.vector_store = vector_store
         # self.productRetriever = RedisProductRetriever()
         # self.productRetriever.create_vector_store()
         
@@ -131,8 +135,26 @@ class QueryFilterStateAgent():
         products = [{"title": product["titile"], "image_url": product["imageUrl"], "last_price": product["list_price"], "sale_price": product["salePrice"]} for product in products]
         return products
 
-    def fetch_products(self, query, filters):
+    def get_prod_from_vector_store(self, query):
+        print(f"using_vector_store...")
+        products = self.vector_store.similarity_search(query, k = 25)
+        fields = "title,imageUrl,listPrice,salePrice,description"
+        # get the products info from metatdata
+        all_products = []
+        for prod in products:
+            prod_metadata = prod.metadata
+            new_prod = {}
+            for field in fields.split(','):
+                new_prod[field] = prod_metadata.get(field, '')
+            all_products.append(new_prod)
+        return all_products
+
+
+    def fetch_products(self, query, filters, use_vector_store = True):
         query = query.replace("'", '').replace('"', '').replace('.', '').replace('!', '').replace('?', '')
+        if use_vector_store:
+            return self.get_prod_from_vector_store(query)
+
         with open('affinity.json') as file:
             affinity = json.load(file)
             #print(affinity)
@@ -209,6 +231,7 @@ class QueryFilterStateAgent():
         return json_data
 
     def collect_message(self, user_id, human_input):
+        f = []
         if user_id in self.convo_history:
             user_context = self.convo_history[user_id]["context"]
             user_autosuggest_context = self.convo_history[user_id]["autosuggest_context"]
@@ -217,16 +240,17 @@ class QueryFilterStateAgent():
 
             self.convo_history[user_id] = {}
             user_context = self.context
-            if len(pers_facets) > 10:
-                user_context[0]["content"] += "The following facets determine the likes, dislikes and personality " \
-                    "of the user. Higher score for a field indicates stronger interest of the user. The facets are " + \
-                    json.dumps(pers_facets)
+            # if len(pers_facets) > 10:
+            #     user_context[0]["content"] += "The following facets determine the likes, dislikes and personality " \
+            #         "of the user. Higher score for a field indicates stronger interest of the user. The facets are " + \
+            #         json.dumps(pers_facets)
             print(user_context)
             self.convo_history[user_id]["context"] = user_context
             user_autosuggest_context = self.autosuggest_context
             self.convo_history[user_id]["autosuggest_context"] = user_autosuggest_context
 
         user_context.append({'role': 'user', 'content': f"{human_input}"})
+        user_context.append({'role': 'user', 'content': f"Do not list the products in the output"})
         response = self.get_completion_from_messages(user_context)
         user_context.append({'role': 'assistant', 'content': f"{response}"})
 
@@ -306,11 +330,11 @@ class QueryFilterStateAgent():
             # get the products
             try:
                 resp = eval(new_query_resp)
-                f = ''#resp['suggested_filters']
+                f = resp['suggested_filters'] if os.environ.get('ENABLE_VECTOR_SEARCH', "false") == 'true' else []
                 q = resp['condensed_query']
             except:
                 q = new_query_resp
-                f = ''
+                f = []
             print(f"resolved query: {q}")
             print(f"resolved filter: {f}")
 
@@ -336,9 +360,16 @@ class QueryFilterStateAgent():
             #         filter.append(facet + ':' + list(affinity[facet].keys())[0])
             
 
-            showcase_products = self.fetch_products(query = q, filters=f)
+            showcase_products = self.fetch_products(query = q, filters=f, use_vector_store=os.environ.get('ENABLE_VECTOR_SEARCH', "false") == 'true')
             parsed_showcase_products = [parse_obj_as(Product, showcase_product) for showcase_product in
                                         showcase_products]
+            
+            # get filters from any services, rn just getting random filters
+            f = random.sample(["in red", "in price less then 100$", "h&m", "zara"], k = 3)
+
+        else:
+            parsed_showcase_products = []
+            f = []
 
 
         all_resp = {
@@ -346,7 +377,7 @@ class QueryFilterStateAgent():
             'assistant': response,
             'assistant_autosuggest_response': as_response,
             'suggested_queries': parsed_as_response,
-            'suggested_filters': [f] if len(f) > 0 else [], #fake_filters("", ""),
+            'suggested_filters': f if len(f) > 0 else [], #fake_filters("", ""),
             'products': parsed_showcase_products
         }
 
