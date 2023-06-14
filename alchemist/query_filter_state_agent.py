@@ -6,6 +6,7 @@ from schemas import Product
 from pydantic import parse_obj_as
 from typing import List
 import requests
+import ast
 # from vector_store import RedisProductRetriever
 
 
@@ -133,47 +134,45 @@ class QueryFilterStateAgent():
 
     def fetch_products(self, query, filters):
         query = query.replace("'", '').replace('"', '').replace('.', '').replace('!', '').replace('?', '')
-        with open('affinity.json') as file:
-            affinity = json.load(file)
-            #print(affinity)
-        express_top_facets = ["length_uFilter", "color_uFilter", "fit_uFilter", "sortPrice", "size_uFilter", "categoryType_uFilter", "type_uFilter", "gender_uFilter", "legShape_uFilter", "sleeveLength_uFilter", "occasion_uFilter", "styleRefinement_uFilter", "rise_uFilter"]
-        json_data1 = {
-            "userId": "uid-1683602268183-16966",
-            "facetAffinity": {},
-            "msTaken": 42
-        }
-        data = json_data1
-        facetAffinity = data['facetAffinity']
-        facets = []
-        if len(facetAffinity)<4:
-            for facet in express_top_facets:
-                if facet not in facets:
-                    facets.append(facet)
-                if len(facets)==4:
-                    break
 
-        print(facets)
-        filter = []
-        for facet in facets:
-            if facet in affinity:
-                filter.append(facet + ':' + list(affinity[facet].keys())[0])
+        # with open('affinity.json') as file:
+        #     affinity = json.load(file)
+        #     #print(affinity)
+        # express_top_facets = ["length_uFilter", "color_uFilter", "fit_uFilter", "sortPrice", "size_uFilter", "categoryType_uFilter", "type_uFilter", "gender_uFilter", "legShape_uFilter", "sleeveLength_uFilter", "occasion_uFilter", "styleRefinement_uFilter", "rise_uFilter"]
+        # json_data1 = {
+        #     "userId": "uid-1683602268183-16966",
+        #     "facetAffinity": {},
+        #     "msTaken": 42
+        # }
+        # data = json_data1
+        # facetAffinity = data['facetAffinity']
+        # facets = []
+        # if len(facetAffinity)<4:
+        #     for facet in express_top_facets:
+        #         if facet not in facets:
+        #             facets.append(facet)
+        #         if len(facets)==4:
+        #             break
+
+        # print("my facet : ",facets)
+        # filter = []
+        # for facet in facets:
+        #     if facet in affinity:
+        #         filter.append(facet + ':' + list(affinity[facet].keys())[0])
         
-        filter = ','.join(filter)
-        if len(filter)>=4:
-            filter = filter[:4]
+        # if len(filter)>=4:
+        #     filter = filter[:4]
+        # filter = ','.join(filter)
 
-        print(filter)
-
+        # print("my filter : ",filter)
         fields = "title,imageUrl,listPrice,salePrice,score,description"
-        
-        url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields={fields}'
-        for ind in range(len(filter)):
-            if ind>len(filter) or ind>len(facets):
-                break
-            url = url + f'&filter={filter[ind]}' + f'&bq={facets[ind]}^{100}'
-
-        if not filters:
+        if filters:
             url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields={fields}'
+            for filt in filters:
+                url = url + f'&bq={filt.split(":")[0]}^{100}'
+        else:
+            url = f'http://search.unbxd.io/b3094e45838bdcf3acf786d57e4ddd98/express_com-u1456154309768/search?q={query}&fields={fields}'
+        
         response = requests.get(url)
 
         resp = []
@@ -277,6 +276,7 @@ class QueryFilterStateAgent():
         # some variable to initialize
         summary_query_response = ""
         parsed_showcase_products = []
+        f = []
 
         is_follow_up = f"""
             Given the query delimited by triple backticks. Return if the given query is a follow up \
@@ -306,35 +306,62 @@ class QueryFilterStateAgent():
             # get the products
             try:
                 resp = eval(new_query_resp)
-                f = ''#resp['suggested_filters']
+                f = []#resp['suggested_filters']
                 q = resp['condensed_query']
             except:
                 q = new_query_resp
-                f = ''
+                f = []
             print(f"resolved query: {q}")
             print(f"resolved filter: {f}")
 
-            ## given the query and the list of facet for that site give me most three relevant facet for that query
-            # relevant_facet_prompt = f""""
-            #     Given a search query delimited by ``` and a list of facets delimited by ```, return three most relevant facet for that query.
-            #     Given Query:  ``` {q} ```
-            #     Given Facet: ``` ["length_uFilter", "color_uFilter", "fit_uFilter", "sortPrice", "size_uFilter", "type_uFilter", "gender_uFilter", "legShape_uFilter", "sleeveLength_uFilter", "occasion_uFilter", "styleRefinement_uFilter", "rise_uFilter"] ```
-            #     Return output as a list. 
-            #     Sample output: ``` [ <<facet_1>>, <<facet_2>>, ...]
-            # """
+            # given the query and the list of facet for that site give me most three relevant facet for that query
+            relevant_facet_prompt = f""""
+                Given a search query delimited by ``` and a list of filters delimited by ```, give me 3 most relevant filters for that query.
+                Given Query:  ``` {q} ```
+                Given Filters: ``` ["length_uFilter", "color_uFilter", "fit_uFilter", "sortPrice", "size_uFilter", "type_uFilter", "gender_uFilter", "legShape_uFilter", "sleeveLength_uFilter", "occasion_uFilter", "styleRefinement_uFilter", "rise_uFilter"] ```
+                Return only the final output of filters as a list
+                Sample output: ``` ["length_uFilter", "color_uFilter", "fit_uFilter"]
+            """
 
             # with open('affinity.json') as file:
             #     affinity = json.load(file) 
             
             
-            # facet_resp = self.get_completion(relevant_facet_prompt)
-            # print(f"The returned facet resp: {facet_resp}")
+            facet_resp = self.get_completion(relevant_facet_prompt)
+            print(f"The returned facet resp ayush check: {facet_resp}")
 
-            # filter = []
-            # for facet in facet_resp:
-            #     if facet in affinity:
-            #         filter.append(facet + ':' + list(affinity[facet].keys())[0])
+            with open('affinity.json') as file:
+                affinity = json.load(file)
+            #print(affinity)
+
+            pop_filters = []
+
+            for facet in affinity:
+                pop_filters.append(facet.keys()[0])
+
+            facets = []
+            for facet in list(facet_resp):
+                if facet not in facets:
+                    facets.append(facet)
+                if len(facets)==4:
+                    break
+
+            print("my facet : ",facets)
+            filter = []
+            for facet in facets:
+                if facet in affinity:
+                    filter.append(list(affinity[facet].keys())[0])
             
+            if len(filter)>=4:
+                filter = filter[:4]
+
+                filter = []
+                for facet in facet_resp:
+                    if facet in affinity:
+                        filter.append(facet + ':' + list(affinity[facet].keys())[0])
+            
+            print(filter)
+                
 
             showcase_products = self.fetch_products(query = q, filters=f)
             parsed_showcase_products = [parse_obj_as(Product, showcase_product) for showcase_product in
@@ -346,7 +373,7 @@ class QueryFilterStateAgent():
             'assistant': response,
             'assistant_autosuggest_response': as_response,
             'suggested_queries': parsed_as_response,
-            'suggested_filters': [f] if len(f) > 0 else [], #fake_filters("", ""),
+            'suggested_filters': facet_resp if len(f) > 0 else [], #fake_filters("", ""),
             'products': parsed_showcase_products
         }
 
